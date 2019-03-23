@@ -29,15 +29,6 @@ void setup() {
   audio_update_timer.refresh();
   audio_update_timer.resume();
 
-//  audio_pwm_timer.pause();
-//  audio_pwm_timer.setPrescaleFactor(1);
-//  audio_pwm_timer.setOverflow(1 << AUDIO_BITS);
-//  audio_pwm_timer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
-//  audio_pwm_timer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
-//  audio_pwm_timer.attachCompare1Interrupt(play);
-//  audio_pwm_timer.refresh();
-//  audio_pwm_timer.resume();
-  
 
   pinMode(AUDIO_CHANNEL_1_PIN, PWM);
          
@@ -57,7 +48,7 @@ void setup() {
 
 }
 
-//--------- Ringbuf parameters ----------
+//--------- Ringbuffer parameters ----------
 
 const uint8_t BUFFERSIZE = 256;
 uint8_t Ringbuffer[256];
@@ -114,50 +105,35 @@ void play() {
   long tempoCount = 1;
   while(1) { 
   //sampleCount = sizeof(kick);
-  if (RingCount < 255) {
-    if (sampleCount) {
-      sampleTotal = (int)kick[samplePointer];
-      samplePointer++;
-      sampleCount--;
+    if (RingCount < 255) {
+      if (sampleCount) {
+        sampleTotal = (int)kick[samplePointer];
+        samplePointer++;
+        sampleCount--;
+      }
+      // hard clip
+  //    if (sampleTotal < -HALF_AUDIO-1)
+  //      sampleTotal = -HALF_AUDIO-1;
+  //    if (sampleTotal > HALF_AUDIO-1)
+  //      sampleTotal = HALF_AUDIO-1;     
+      Ringbuffer[RingWrite] = sampleTotal;
+      RingWrite++;
+      RingCount++;
     }
-    // hard clip
-//    if (sampleTotal < -HALF_AUDIO-1)
-//      sampleTotal = -HALF_AUDIO-1;
-//    if (sampleTotal > HALF_AUDIO-1)
-//      sampleTotal = HALF_AUDIO-1;     
-    Ringbuffer[RingWrite] = sampleTotal;
-    RingWrite++;
-    RingCount++;
-  }
 
 /* ----------------------------- */
-      if (!(tempoCount--)) { // every "tempo" ticks, do the thing
-        tempoCount = tempo; // set it back to the tempo ticks
-        uint8_t trigger = pattern[stepCount++]; //
-    
-        if (stepCount > patternLength) stepCount = 0;
-        // read the pattern bytes, each one triggers a sample
-        if (trigger & 1) {
-          samplePointer = 0;
-          sampleCount = sizeof(kick); // number of bytes in sample
-        }
+    if (!(tempoCount--)) { // every "tempo" ticks, do the thing
+      tempoCount = tempo; // set it back to the tempo ticks
+      uint8_t trigger = pattern[stepCount++]; //
+  
+      if (stepCount > patternLength) stepCount = 0;
+      // read the pattern bytes, each one triggers a sample
+      if (trigger & 1) {
+        samplePointer = 0;
+        sampleCount = sizeof(kick); // number of bytes in sample
       }
+    }
+//    playSequencer(tempoCount, stepCount);
   }
 /* ----------------------------- */
 }
-
-//void playSequencer() {
-//
-//  
-//  if (!(tempoCount--)) { // every "tempo" ticks, do the thing
-//    tempoCount = tempo; // set it back to the tempo ticks
-//    uint8_t trigger = pattern[stepCount++]; //
-//
-//    if (stepCount > patternLength) stepCount = 0;
-//    // read the pattern bytes, each one triggers a sample
-//    if (trigger & 1) {
-//      samplePointer = 0;
-//      sampleCount = sizeof(kick); // number of bytes in sample
-//    }
-//  }
-//}
