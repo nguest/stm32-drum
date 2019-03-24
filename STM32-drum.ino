@@ -17,11 +17,17 @@ HardwareTimer audio_pwm_timer(AUDIO_PWM_TIMER);
 //CircularBuffer<unsigned int> output_buffer;  // fixed size 256
 
 void setup() {
-   Serial.begin(115200); 
+  Serial.begin(115200); 
 
   // audio update timer is running at 16kHz or whatever, but audio_pwm_timer is the thing that is doing the output at/near full speed
   audio_update_timer.pause();
-  audio_update_timer.setPeriod(1000000UL / AUDIO_RATE);
+  //audio_update_timer.setPeriod(1000000UL / AUDIO_RATE);
+  
+  uint32_t prescaler = F_CPU/AUDIO_RATE/AUDIO_BITS;
+  audio_update_timer.setPrescaleFactor(prescaler);
+  uint32_t overflow = F_CPU/AUDIO_RATE/prescaler;
+  audio_update_timer.setOverflow(overflow);
+  
   audio_update_timer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
   audio_update_timer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
   audio_update_timer.attachCompare1Interrupt(pwmAudioOutput);
@@ -41,17 +47,14 @@ void setup() {
   #endif
   // Allocate enough room to write all intended bits
     audio_pwm_timer.setOverflow(1 << AUDIO_BITS);
-    if (!Serial) delay(1000);
-       Serial.print("hello");
-
-
+    //audio_pwm_timer.setOverflow(1 << 12);
 }
 
 //--------- Ringbuffer parameters ----------
 
 const uint8_t BUFFERSIZE = 256;
 const uint8_t BUFFERSIZE_M1 = BUFFERSIZE - 1;
-uint8_t Ringbuffer[256];
+uint_fast16_t Ringbuffer[256];
 uint8_t RingWrite = 0;
 uint8_t RingRead = 0;
 volatile uint8_t RingCount = 0;
@@ -64,6 +67,25 @@ uint16_t samplePointer[NUM_SAMPLES];
 
 long tempo = 1000000;
 const unsigned char patternLength = 15;
+
+const unsigned char pattern2[16] = {
+  B01001000,
+  B00000010,
+  B01001001,
+  B00000100,
+  B00101010,
+  B00001000,
+  B00100100,
+  B00001000,
+  B00000001,
+  B00001000,
+  B00001011,
+  B00001000,
+  B00001000,
+  B00000011,
+  B00001001,
+  B00000001,
+};
 
 const unsigned char pattern[16] = {
   B01000001,
@@ -100,26 +122,26 @@ void play() {
 
   /* -------sample buffer write------------ */
 
-  int8_t sampleTotal;
-  uint8_t stepCount = 0;
-  long tempoCount = 1;
+  uint_fast16_t sampleTotal;
+  uint_fast8_t stepCount = 0;
+  uint32_t tempoCount = 1;
   sampleCount[NUM_SAMPLES] = { 0 };
 
   while(1) { 
     if (RingCount < BUFFERSIZE_M1) { // if space in ringbuffer
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
         if (sampleCount[i]) {
-          sampleTotal = (int)wavetables[i][samplePointer[i]] - HALF_AUDIO_BITS; // 
+          sampleTotal = (uint_fast16_t)wavetables[i][samplePointer[i]];// - HALF_AUDIO_BITS; // 
           samplePointer[i]++;
           sampleCount[i]--;
         }      
       }
       // hard clip - must be faster than `constrain()`?
-      if (sampleTotal < -HALF_AUDIO_BITS)
-        sampleTotal = -HALF_AUDIO_BITS;
-      if (sampleTotal > HALF_AUDIO_BITS)
-        sampleTotal = HALF_AUDIO_BITS;
-      Ringbuffer[RingWrite] = sampleTotal + HALF_AUDIO_BITS;
+//      if (sampleTotal < -HALF_AUDIO_BITS)
+//        sampleTotal = -HALF_AUDIO_BITS;
+//      if (sampleTotal > HALF_AUDIO_BITS)
+//        sampleTotal = HALF_AUDIO_BITS;
+      Ringbuffer[RingWrite] = sampleTotal;// + HALF_AUDIO_BITS;
       RingWrite++;
       RingCount++;
     }
@@ -128,9 +150,10 @@ void play() {
 
     if (!(tempoCount--)) { // every "tempo" ticks, do the thing
       tempoCount = tempo; // set it back to the tempo ticks
-      uint8_t trigger = pattern[stepCount++]; //
+      uint_fast8_t trigger = pattern[stepCount++]; //
+//      Serial.println(audio_pwm_timer.getOverflow());
+//      Serial.println(audio_pwm_timer.getPrescaleFactor());
 
-      // reset stepCount at end of pattern
       if (stepCount > patternLength) stepCount = 0;
       // read the pattern bytes, each one triggers a sample
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
