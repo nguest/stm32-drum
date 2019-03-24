@@ -1,5 +1,5 @@
 #include "CircularBuffer.h"
-#include "wavetables.h"
+#include "wavetables16.h"
 
 #define AUDIO_CHANNEL_1_PIN PB8
 #define AUDIO_PWM_TIMER 4
@@ -9,7 +9,7 @@
 HardwareTimer audio_update_timer(AUDIO_UPDATE_TIMER);
 HardwareTimer audio_pwm_timer(AUDIO_PWM_TIMER);
 
-#define AUDIO_BITS 8
+#define AUDIO_BITS 12
 #define HALF_AUDIO_BITS (1 << AUDIO_BITS)/2
 #define MAX_CARRIER_FREQ (F_CPU / (1 << AUDIO_BITS)) // e.g 72M / 256 for 8 bit = 281250. 256 = 1 leftshift 8
 #define AUDIO_RATE 22050
@@ -43,11 +43,11 @@ void setup() {
   #else
     // No point in generating arbitrarily high carrier frequencies. In fact, if
     // there _is_ any headroom, give the PWM pin more time to swing from HIGH to LOW and BACK, cleanly
-    audio_pwm_timer.setPrescaleFactor((int)MAX_CARRIER_FREQ / (AUDIO_RATE * 5));
+    audio_pwm_timer.setPrescaleFactor((int)MAX_CARRIER_FREQ / (AUDIO_RATE * 4));
+
   #endif
   // Allocate enough room to write all intended bits
     audio_pwm_timer.setOverflow(1 << AUDIO_BITS);
-    //audio_pwm_timer.setOverflow(1 << 12);
 }
 
 //--------- Ringbuffer parameters ----------
@@ -59,58 +59,51 @@ uint8_t RingWrite = 0;
 uint8_t RingRead = 0;
 volatile uint8_t RingCount = 0;
 
-const uint8_t NUM_SAMPLES = 3;
 uint16_t sampleCount[NUM_SAMPLES];
 uint16_t samplePointer[NUM_SAMPLES];
 
 //--------- Sequencer parameters ----------
 
 long tempo = 1000000;
-const unsigned char patternLength = 15;
+const unsigned char patternLength = 7;
 
-const unsigned char pattern2[16] = {
-  B01001000,
+const unsigned char pattern[8] = {
+  B00000001,
+  B00100000,
   B00000010,
-  B01001001,
-  B00000100,
-  B00101010,
-  B00001000,
-  B00100100,
-  B00001000,
+  B00100000,
   B00000001,
-  B00001000,
-  B00001011,
-  B00001000,
-  B00001000,
-  B00000011,
-  B00001001,
-  B00000001,
+  B00100000,
+  B00000010,
+  B00010001,
 };
 
-const unsigned char pattern[16] = {
-  B01000001,
-  B00000010,
+
+
+const unsigned char pattern2[16] = {
   B01000001,
   B00000100,
-  B00100010,
+  B01000001,
+  B00000000,
+  B01000010,
+  B00000000,
+  B01000100,
+  B01000000,
+  B01000001,
   B00000100,
-  B00100100,
+  B01000000,
   B00000000,
-  B00000001,
+  B01000011,
   B00000000,
-  B00000011,
-  B00000101,
-  B00000001,
-  B00000011,
-  B00000001,
-  B00000001,
+  B01000001,
+  B01000000,
 };
 
 //--------- pwmAudioOutput ------//
 
 static void pwmAudioOutput() {
   if (RingCount) { //If entry in FIFO..
-    pwmWrite(AUDIO_CHANNEL_1_PIN, Ringbuffer[RingRead++]); //Output LSB of 16-bit DAC
+    pwmWrite(AUDIO_CHANNEL_1_PIN, (uint16_t)Ringbuffer[RingRead++] >> 4); //Output LSB of 16-bit DAC
     RingCount--;
   }
 }
@@ -131,17 +124,17 @@ void play() {
     if (RingCount < BUFFERSIZE_M1) { // if space in ringbuffer
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
         if (sampleCount[i]) {
-          sampleTotal = (uint_fast16_t)wavetables[i][samplePointer[i]];// - HALF_AUDIO_BITS; // 
+          sampleTotal = (uint_fast16_t)wavetables16[i][samplePointer[i]] - (1 << 15);// - gainReduction[i])); // 
           samplePointer[i]++;
           sampleCount[i]--;
         }      
       }
-      // hard clip - must be faster than `constrain()`?
-//      if (sampleTotal < -HALF_AUDIO_BITS)
-//        sampleTotal = -HALF_AUDIO_BITS;
-//      if (sampleTotal > HALF_AUDIO_BITS)
-//        sampleTotal = HALF_AUDIO_BITS;
-      Ringbuffer[RingWrite] = sampleTotal;// + HALF_AUDIO_BITS;
+     //  hard clip - must be faster than `constrain()`?
+//      if (sampleTotal < -(1 << 15))
+//        sampleTotal = -(1 << 15);
+//      if (sampleTotal > (1 << 15))
+//        sampleTotal = (1 << 15);
+      Ringbuffer[RingWrite] = sampleTotal + (1 << 15);
       RingWrite++;
       RingCount++;
     }
@@ -153,13 +146,15 @@ void play() {
       uint_fast8_t trigger = pattern[stepCount++]; //
 //      Serial.println(audio_pwm_timer.getOverflow());
 //      Serial.println(audio_pwm_timer.getPrescaleFactor());
+      Serial.println(Ringbuffer[RingWrite]);
+      
 
       if (stepCount > patternLength) stepCount = 0;
-      // read the pattern bytes, each one triggers a sample
+      // read the pattern bytes, each bit triggers a sample
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
         if (trigger & 1<<i) {
           samplePointer[i] = 0;
-          sampleCount[i] = wavetableLengths[i]; // number of bytes in sample
+          sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
         }
       } 
     }
