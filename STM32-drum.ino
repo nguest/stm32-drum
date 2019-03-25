@@ -5,9 +5,13 @@
 #define AUDIO_PWM_TIMER 4
 // The timer used for running the audio update loop. NOTE: Timer 3 appears to clash with SPI DMA transfers under some circumstances
 #define AUDIO_UPDATE_TIMER 2
+//#define LOOP_TIMER 3
 
-HardwareTimer audio_update_timer(AUDIO_UPDATE_TIMER);
-HardwareTimer audio_pwm_timer(AUDIO_PWM_TIMER);
+
+HardwareTimer audioUpdateTimer(AUDIO_UPDATE_TIMER);
+HardwareTimer audioPwmTimer(AUDIO_PWM_TIMER);
+//HardwareTimer loopTimer(LOOP_TIMER);
+
 
 #define AUDIO_BITS 12
 #define HALF_AUDIO_BITS (1 << AUDIO_BITS)/2
@@ -20,41 +24,54 @@ void setup() {
   Serial.begin(115200); 
 
   // audio update timer is running at 16kHz or whatever, but audio_pwm_timer is the thing that is doing the output at/near full speed
-  audio_update_timer.pause();
+  audioUpdateTimer.pause();
   //audio_update_timer.setPeriod(1000000UL / AUDIO_RATE);
   
   uint32_t prescaler = F_CPU/AUDIO_RATE/AUDIO_BITS;
-  audio_update_timer.setPrescaleFactor(prescaler);
+  audioUpdateTimer.setPrescaleFactor(prescaler);
   uint32_t overflow = F_CPU/AUDIO_RATE/prescaler;
-  audio_update_timer.setOverflow(overflow);
+  audioUpdateTimer.setOverflow(overflow);
   
-  audio_update_timer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
-  audio_update_timer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
-  audio_update_timer.attachCompare1Interrupt(pwmAudioOutput);
-  audio_update_timer.refresh();
-  audio_update_timer.resume();
+  audioUpdateTimer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
+  audioUpdateTimer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
+  audioUpdateTimer.attachCompare1Interrupt(pwmAudioOutput);
+  audioUpdateTimer.refresh();
+  audioUpdateTimer.resume();
 
 
   pinMode(AUDIO_CHANNEL_1_PIN, PWM);
          
   #if MAX_CARRIER_FREQ < (AUDIO_RATE * 5)
     // Generate as fast a carrier as possible
-    audio_pwm_timer.setPrescaleFactor(1);
+    audioPwmTimer.setPrescaleFactor(1);
   #else
     // No point in generating arbitrarily high carrier frequencies. In fact, if
     // there _is_ any headroom, give the PWM pin more time to swing from HIGH to LOW and BACK, cleanly
-    audio_pwm_timer.setPrescaleFactor((int)MAX_CARRIER_FREQ / (AUDIO_RATE * 4));
+    audioPwmTimer.setPrescaleFactor((int)MAX_CARRIER_FREQ / (AUDIO_RATE * 4));
 
   #endif
   // Allocate enough room to write all intended bits
-    audio_pwm_timer.setOverflow(1 << AUDIO_BITS);
+    audioPwmTimer.setOverflow(1 << AUDIO_BITS);
+//
+//
+//  loopTimer.pause();
+//  loopTimer.setPeriod(1000000UL / AUDIO_RATE / 2);
+//  
+////  loopTimer.setPrescaleFactor(F_CPU/AUDIO_RATE/AUDIO_BITS);
+////  loopTimer.setOverflow(1 << AUDIO_BITS);
+//  
+//  loopTimer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
+//  loopTimer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
+//  loopTimer.attachCompare1Interrupt(play);
+//  loopTimer.refresh();
+//  loopTimer.resume();
 }
 
 //--------- Ringbuffer parameters ----------
 
 const uint8_t BUFFERSIZE = 256;
 const uint8_t BUFFERSIZE_M1 = BUFFERSIZE - 1;
-uint_fast16_t Ringbuffer[256];
+uint16_t Ringbuffer[256];
 uint8_t RingWrite = 0;
 uint8_t RingRead = 0;
 volatile uint8_t RingCount = 0;
@@ -103,7 +120,7 @@ const unsigned char pattern2[16] = {
 
 static void pwmAudioOutput() {
   if (RingCount) { //If entry in FIFO..
-    pwmWrite(AUDIO_CHANNEL_1_PIN, (uint16_t)Ringbuffer[RingRead++] >> 4); //Output LSB of 16-bit DAC
+    pwmWrite(AUDIO_CHANNEL_1_PIN, Ringbuffer[RingRead++] >> 4); //Output LSB of 16-bit DAC
     RingCount--;
   }
 }
@@ -115,26 +132,31 @@ void play() {
 
   /* -------sample buffer write------------ */
 
-  uint_fast16_t sampleTotal;
+  int16_t sampleTotal = 0;
   uint_fast8_t stepCount = 0;
   uint32_t tempoCount = 1;
   sampleCount[NUM_SAMPLES] = { 0 };
 
   while(1) { 
     if (RingCount < BUFFERSIZE_M1) { // if space in ringbuffer
+      sampleTotal = 0;
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
         if (sampleCount[i]) {
-          sampleTotal = (uint_fast16_t)wavetables16[i][samplePointer[i]] - (1 << 15);// - gainReduction[i])); // 
-          samplePointer[i]++;
+          sampleTotal += (uint16_t)wavetables16[i][samplePointer[i]++] - (1 << 15);// - gainReduction[i])); // 
           sampleCount[i]--;
         }      
       }
+//        if (sampleCount[0]) {
+//          sampleTotal += wavetables16[0][samplePointer[0]] - 37268;// - gainReduction[i])); // 
+//          samplePointer[0]++;
+//          sampleCount[0]--;
+//        }      
      //  hard clip - must be faster than `constrain()`?
 //      if (sampleTotal < -(1 << 15))
 //        sampleTotal = -(1 << 15);
 //      if (sampleTotal > (1 << 15))
 //        sampleTotal = (1 << 15);
-      Ringbuffer[RingWrite] = sampleTotal + (1 << 15);
+      Ringbuffer[RingWrite] = (uint16_t)(sampleTotal + (1 << 15));
       RingWrite++;
       RingCount++;
     }
@@ -144,10 +166,11 @@ void play() {
     if (!(tempoCount--)) { // every "tempo" ticks, do the thing
       tempoCount = tempo; // set it back to the tempo ticks
       uint_fast8_t trigger = pattern[stepCount++]; //
-//      Serial.println(audio_pwm_timer.getOverflow());
-//      Serial.println(audio_pwm_timer.getPrescaleFactor());
-      Serial.println(Ringbuffer[RingWrite]);
-      
+//      Serial.println(audioPwmTimer.getOverflow());
+//      Serial.println(audioPwmTimer.getPrescaleFactor());
+//      Serial.println(loopTimer.getOverflow());
+//      Serial.println(loopTimer.getPrescaleFactor());   
+Serial.println(Ringbuffer[RingWrite]);
 
       if (stepCount > patternLength) stepCount = 0;
       // read the pattern bytes, each bit triggers a sample
@@ -166,5 +189,5 @@ void play() {
 //--------- Main Loop ----------//
 
 void loop() {   
-   play();
+  play();
 }
