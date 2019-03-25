@@ -3001,4 +3001,5 @@ const uint16_t *wavetables16[NUM_SAMPLES] = { kick16, snare1, snare2, rim16, hat
 
 const uint16_t wavetableLengths16[NUM_SAMPLES] = { 5595, 2586, 4478, 12447, 2665, 1921 };
 
-double gainReduction[NUM_SAMPLES] = { 0, 0.95, 0, 0, 0, 0.95 };
+//double gainReduction[NUM_SAMPLES] = { 0, 0.5, 0, 0, 0.8, 0.95 };
+uint16_t gain[NUM_SAMPLES] = { 128, 64, 0, 0, 64, 4 };

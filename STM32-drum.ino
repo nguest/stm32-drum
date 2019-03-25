@@ -142,9 +142,8 @@ void play() {
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
         if (sampleCount[i]) {
           int16_t sample = (wavetables16[i][samplePointer[i]++]) - (1 << 15);//) >> 8;
-          sample -= (int16_t)(sample * gainReduction[i]);
+          sample = ((sample * gain[i]) >> 8);
           sampleTotal += sample; // 
-         // Serial.println(sample);
           sampleCount[i]--;
         }      
       }    
