@@ -79,12 +79,13 @@ volatile uint8_t RingCount = 0;
 uint16_t sampleCount[NUM_SAMPLES];
 uint16_t samplePointer[NUM_SAMPLES];
 
-//--------- Sequencer parameters ----------
+//--------- Sequencer/Play parameters ----------
 
-long tempo = 1000000;
-const unsigned char patternLength = 7;
+uint8_t MODE = 1;
+long tempo = 600000;
+const uint8_t patternLength = 7;
 
-const unsigned char pattern[8] = {
+const uint8_t pattern[8] = {
   B00000001,
   B00100000,
   B00000010,
@@ -95,9 +96,7 @@ const unsigned char pattern[8] = {
   B00010001,
 };
 
-
-
-const unsigned char pattern2[16] = {
+const uint8_t pattern2[16] = {
   B01000001,
   B00000100,
   B01000001,
@@ -132,7 +131,7 @@ void play() {
 
   /* -------sample buffer write------------ */
 
-  int16_t sampleTotal = 0;
+  int32_t sampleTotal = 0; // has to be signed
   uint_fast8_t stepCount = 0;
   uint32_t tempoCount = 1;
   sampleCount[NUM_SAMPLES] = { 0 };
@@ -142,44 +141,47 @@ void play() {
       sampleTotal = 0;
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
         if (sampleCount[i]) {
-          sampleTotal += (uint16_t)wavetables16[i][samplePointer[i]++] - (1 << 15);// - gainReduction[i])); // 
+          int16_t sample = (wavetables16[i][samplePointer[i]++]) - (1 << 15);//) >> 8;
+          sample -= (int16_t)(sample * gainReduction[i]);
+          sampleTotal += sample; // 
+         // Serial.println(sample);
           sampleCount[i]--;
         }      
-      }
-//        if (sampleCount[0]) {
-//          sampleTotal += wavetables16[0][samplePointer[0]] - 37268;// - gainReduction[i])); // 
-//          samplePointer[0]++;
-//          sampleCount[0]--;
-//        }      
+      }    
      //  hard clip - must be faster than `constrain()`?
 //      if (sampleTotal < -(1 << 15))
 //        sampleTotal = -(1 << 15);
 //      if (sampleTotal > (1 << 15))
 //        sampleTotal = (1 << 15);
-      Ringbuffer[RingWrite] = (uint16_t)(sampleTotal + (1 << 15));
+      Ringbuffer[RingWrite] = (sampleTotal + (1 << 15));
       RingWrite++;
       RingCount++;
     }
 
   /* -------sequencer------------ */
-
-    if (!(tempoCount--)) { // every "tempo" ticks, do the thing
-      tempoCount = tempo; // set it back to the tempo ticks
-      uint_fast8_t trigger = pattern[stepCount++]; //
-//      Serial.println(audioPwmTimer.getOverflow());
-//      Serial.println(audioPwmTimer.getPrescaleFactor());
-//      Serial.println(loopTimer.getOverflow());
-//      Serial.println(loopTimer.getPrescaleFactor());   
-Serial.println(Ringbuffer[RingWrite]);
-
-      if (stepCount > patternLength) stepCount = 0;
-      // read the pattern bytes, each bit triggers a sample
-      for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
-        if (trigger & 1<<i) {
-          samplePointer[i] = 0;
-          sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
-        }
-      } 
+    if (MODE == 1) {
+      if (!(tempoCount--)) { // every "tempo" ticks, do the thing
+        tempoCount = tempo; // set it back to the tempo ticks
+        uint_fast8_t trigger = pattern[stepCount++]; //
+  //      Serial.println(audioPwmTimer.getOverflow());
+  //      Serial.println(audioPwmTimer.getPrescaleFactor());
+  //      Serial.println(loopTimer.getOverflow());
+  //      Serial.println(loopTimer.getPrescaleFactor());   
+  //Serial.println(Ringbuffer[RingWrite]);
+  
+        if (stepCount > patternLength) stepCount = 0;
+        // read the pattern bytes, each bit triggers a sample
+        for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
+          if (trigger & 1<<i) {
+            samplePointer[i] = 0;
+            sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
+          }
+        } 
+      }
+    }
+    else {
+      stepCount = 0;
+      tempoCount = 1;
     }
   }
   
@@ -188,6 +190,6 @@ Serial.println(Ringbuffer[RingWrite]);
 
 //--------- Main Loop ----------//
 
-void loop() {   
-  play();
+void loop() {
+  play();    
 }
