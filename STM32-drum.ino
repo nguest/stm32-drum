@@ -5,12 +5,12 @@
 #define AUDIO_PWM_TIMER 4
 // The timer used for running the audio update loop. NOTE: Timer 3 appears to clash with SPI DMA transfers under some circumstances
 #define AUDIO_UPDATE_TIMER 2
-//#define LOOP_TIMER 3
+#define LOOP_TIMER 3
 
 
 HardwareTimer audioUpdateTimer(AUDIO_UPDATE_TIMER);
 HardwareTimer audioPwmTimer(AUDIO_PWM_TIMER);
-//HardwareTimer loopTimer(LOOP_TIMER);
+HardwareTimer buttonTimer(LOOP_TIMER);
 
 
 #define AUDIO_BITS 12
@@ -54,17 +54,28 @@ void setup() {
     audioPwmTimer.setOverflow(1 << AUDIO_BITS);
 //
 //
-//  loopTimer.pause();
-//  loopTimer.setPeriod(1000000UL / AUDIO_RATE / 2);
-//  
-////  loopTimer.setPrescaleFactor(F_CPU/AUDIO_RATE/AUDIO_BITS);
-////  loopTimer.setOverflow(1 << AUDIO_BITS);
-//  
-//  loopTimer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
-//  loopTimer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
-//  loopTimer.attachCompare1Interrupt(play);
-//  loopTimer.refresh();
-//  loopTimer.resume();
+  buttonTimer.pause();
+ 
+//  buttonTimer.setPrescaleFactor(F_CPU/AUDIO_RATE/AUDIO_BITS);
+//  buttonTimer.setOverflow(S);
+  buttonTimer.setPeriod(500000);
+  buttonTimer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
+  buttonTimer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
+  buttonTimer.attachCompare1Interrupt(buttonInterrupt);
+  buttonTimer.refresh();
+  buttonTimer.resume();
+
+  pinMode(PA5, INPUT_PULLUP);
+}
+
+bool buttonLast = 1;
+bool button = 1;
+void buttonInterrupt() {
+  button = digitalRead(PA5);
+  if (button == 0 && buttonLast == 1) {
+    Serial.println("yeah");
+  }
+  buttonLast = button;
 }
 
 //--------- Ringbuffer parameters ----------
@@ -82,18 +93,29 @@ uint16_t samplePointer[NUM_SAMPLES];
 //--------- Sequencer/Play parameters ----------
 
 uint8_t MODE = 1;
-long tempo = 600000;
-const uint8_t patternLength = 7;
+long tempo = 300000;
+const uint8_t patternLength = 15;
 
-const uint8_t pattern[8] = {
+const uint8_t pattern[16] = {
   B00000001,
   B00100000,
+  B00100000,
+  B00100000,
+  //
   B00000010,
+  B00100000,
   B00100000,
   B00000001,
+  //
+  B00100001,
+  B00100100,
   B00100000,
   B00000010,
+  //
+  B00100000,
   B00010001,
+  B00100000,
+  B00010000,
 };
 
 const uint8_t pattern2[16] = {
@@ -158,14 +180,15 @@ void play() {
     }
 
   /* -------sequencer------------ */
+ 
     if (MODE == 1) {
       if (!(tempoCount--)) { // every "tempo" ticks, do the thing
         tempoCount = tempo; // set it back to the tempo ticks
         uint_fast8_t trigger = pattern[stepCount++]; //
   //      Serial.println(audioPwmTimer.getOverflow());
   //      Serial.println(audioPwmTimer.getPrescaleFactor());
-  //      Serial.println(loopTimer.getOverflow());
-  //      Serial.println(loopTimer.getPrescaleFactor());   
+  //      Serial.println(buttonTimer.getOverflow());
+  //      Serial.println(buttonTimer.getPrescaleFactor());   
   //Serial.println(Ringbuffer[RingWrite]);
   
         if (stepCount > patternLength) stepCount = 0;
