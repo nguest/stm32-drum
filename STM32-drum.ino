@@ -68,16 +68,6 @@ void setup() {
   pinMode(PA5, INPUT_PULLUP);
 }
 
-bool buttonLast = 1;
-bool button = 1;
-void buttonInterrupt() {
-  button = digitalRead(PA5);
-  if (button == 0 && buttonLast == 1) {
-    Serial.println("yeah");
-  }
-  buttonLast = button;
-}
-
 //--------- Ringbuffer parameters ----------
 
 const uint8_t BUFFERSIZE = 256;
@@ -92,9 +82,10 @@ uint16_t samplePointer[NUM_SAMPLES];
 
 //--------- Sequencer/Play parameters ----------
 
-uint8_t MODE = 1;
+uint8_t MODE = 0;
 long tempo = 300000;
 const uint8_t patternLength = 15;
+uint_fast8_t trigger;
 
 const uint8_t pattern[16] = {
   B00000001,
@@ -136,6 +127,22 @@ const uint8_t pattern2[16] = {
   B01000001,
   B01000000,
 };
+
+//--------- button interrupt ------//
+
+
+bool buttonLast = 1;
+bool button = 1;
+void buttonInterrupt() {
+  button = digitalRead(PA5);
+  if (button == 0 && buttonLast == 1) {
+    trigger = B00000001;
+    Serial.println(trigger);
+  } else {
+    trigger = B00000000;
+  }
+  buttonLast = button;
+}
 
 //--------- pwmAudioOutput ------//
 
@@ -184,7 +191,7 @@ void play() {
     if (MODE == 1) {
       if (!(tempoCount--)) { // every "tempo" ticks, do the thing
         tempoCount = tempo; // set it back to the tempo ticks
-        uint_fast8_t trigger = pattern[stepCount++]; //
+        trigger = pattern[stepCount++]; //
   //      Serial.println(audioPwmTimer.getOverflow());
   //      Serial.println(audioPwmTimer.getPrescaleFactor());
   //      Serial.println(buttonTimer.getOverflow());
@@ -204,6 +211,12 @@ void play() {
     else {
       stepCount = 0;
       tempoCount = 1;
+      for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
+        if (trigger & 1<<i) {
+          samplePointer[i] = 0;
+          sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
+        }
+      } 
     }
   }
   
