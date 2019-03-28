@@ -55,10 +55,9 @@ void setup() {
 //
 //
   buttonTimer.pause();
- 
 //  buttonTimer.setPrescaleFactor(F_CPU/AUDIO_RATE/AUDIO_BITS);
 //  buttonTimer.setOverflow(S);
-  buttonTimer.setPeriod(500000);
+  buttonTimer.setPeriod(10000);
   buttonTimer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
   buttonTimer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
   buttonTimer.attachCompare1Interrupt(buttonInterrupt);
@@ -85,7 +84,7 @@ uint16_t samplePointer[NUM_SAMPLES];
 uint8_t MODE = 0;
 long tempo = 300000;
 const uint8_t patternLength = 15;
-uint_fast8_t trigger;
+uint_fast8_t trigger = B00000000;
 
 const uint8_t pattern[16] = {
   B00000001,
@@ -133,14 +132,22 @@ const uint8_t pattern2[16] = {
 
 bool buttonLast = 1;
 bool button = 1;
+
+int delay1;
 void buttonInterrupt() {
   button = digitalRead(PA5);
   if (button == 0 && buttonLast == 1) {
     trigger = B00000001;
-    Serial.println(trigger);
-  } else {
+    delay1 = 0;
+  }
+  if (button == 1 && delay1 > 10) {
     trigger = B00000000;
   }
+  
+  // else {
+  //   trigger = B00000000;
+  // } 
+  delay1++;
   buttonLast = button;
 }
 
@@ -163,6 +170,8 @@ void play() {
   int32_t sampleTotal = 0; // has to be signed
   uint_fast8_t stepCount = 0;
   uint32_t tempoCount = 1;
+  uint32_t playCount = 1;
+
   sampleCount[NUM_SAMPLES] = { 0 };
 
   while(1) { 
@@ -211,12 +220,18 @@ void play() {
     else {
       stepCount = 0;
       tempoCount = 1;
-      for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
-        if (trigger & 1<<i) {
-          samplePointer[i] = 0;
-          sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
-        }
-      } 
+        for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
+          if (trigger & 1<<i) {
+            Serial.println("trig");
+
+            samplePointer[i] = 0;
+            sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
+          }
+        } 
+        // if (trigger & 1<<0) {
+        //   samplePointer[0] = 0;
+        //   sampleCount[0] = wavetableLengths16[0]; // number of bytes in sample
+        // }
     }
   }
   
