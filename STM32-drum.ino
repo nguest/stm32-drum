@@ -81,10 +81,11 @@ uint16_t samplePointer[NUM_SAMPLES];
 
 //--------- Sequencer/Play parameters ----------
 
-uint8_t MODE = 0;
+uint8_t MODE = 1;
 long tempo = 300000;
-const uint8_t patternLength = 15;
+const uint8_t patternLength = 7;
 uint_fast8_t trigger = B00000000;
+uint_fast8_t buttonTrigger = B00000000;
 
 const uint8_t pattern[16] = {
   B00000001,
@@ -106,6 +107,17 @@ const uint8_t pattern[16] = {
   B00010001,
   B00100000,
   B00010000,
+};
+
+uint8_t livePattern[8] = {
+  B00000000,
+  B00000000,
+  B00000000,
+  B00000000,
+  B00000000,
+  B00000000,
+  B00000000,
+  B00000000,  
 };
 
 const uint8_t pattern2[16] = {
@@ -137,18 +149,15 @@ int delay1;
 void buttonInterrupt() {
   button = digitalRead(PA5);
   if (button == 0 && buttonLast == 1) {
-    trigger = B00000001;
+    buttonTrigger = B00000001;
     delay1 = 0;
   }
   if (button == 1 && delay1 > 10) {
-    trigger = B00000000;
+    buttonTrigger = B00000000;
   }
-  
-  // else {
-  //   trigger = B00000000;
-  // } 
   delay1++;
   buttonLast = button;
+  //Serial.println(buttonTrigger);
 }
 
 //--------- pwmAudioOutput ------//
@@ -200,12 +209,13 @@ void play() {
     if (MODE == 1) {
       if (!(tempoCount--)) { // every "tempo" ticks, do the thing
         tempoCount = tempo; // set it back to the tempo ticks
-        trigger = pattern[stepCount++]; //
-  //      Serial.println(audioPwmTimer.getOverflow());
-  //      Serial.println(audioPwmTimer.getPrescaleFactor());
-  //      Serial.println(buttonTimer.getOverflow());
-  //      Serial.println(buttonTimer.getPrescaleFactor());   
-  //Serial.println(Ringbuffer[RingWrite]);
+        trigger = livePattern[stepCount++]; //
+
+        if (buttonTrigger & 1) {
+          Serial.println("trig");
+          livePattern[stepCount] = B00000001;
+        }
+
   
         if (stepCount > patternLength) stepCount = 0;
         // read the pattern bytes, each bit triggers a sample
@@ -222,7 +232,7 @@ void play() {
       tempoCount = 1;
         for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
           if (trigger & 1<<i) {
-            Serial.println("trig");
+            //Serial.println("trig");
 
             samplePointer[i] = 0;
             sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
