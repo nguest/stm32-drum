@@ -86,13 +86,16 @@ volatile uint8_t RingCount = 0;
 uint16_t sampleCount[NUM_SAMPLES];
 uint16_t samplePointer[NUM_SAMPLES];
 
-//--------- Sequencer/Play parameters ----------
+//--------- Sequencer/Play parameters ----------//
 
 uint8_t MODE = 1;
-long tempo = 300000;
+long tempo = 400000;
 const uint8_t patternLength = 15;
 uint_fast8_t trigger = B00000000;
 uint_fast8_t buttonTrigger = B00000000;
+
+//--------- Patterns ----------------------//
+
 
 uint8_t livePattern[16] = {
   B00000001,
@@ -130,7 +133,6 @@ uint8_t alivePattern[8] = {
 
 //--------- button interrupt ------//
 
-
 bool buttonLast = 1;
 bool button = 1;
 
@@ -161,7 +163,7 @@ void pwmAudioOutput() {
 //--------- Write Buffer and sequence ----------//
 
 void play() {
-  // everything here optimized for processing speed not code quality
+  // everything here optimized for processing speed not code quality - inline faster?
 
   /* -------sample buffer write------------ */
 
@@ -171,7 +173,7 @@ void play() {
 
   sampleCount[NUM_SAMPLES] = { 0 };
 
-  while(1) { 
+  while(1) {
     if (RingCount < BUFFERSIZE_M1) { // if space in ringbuffer
       sampleTotal = 0;
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
@@ -192,8 +194,7 @@ void play() {
       RingCount++;
     }
   /* -------LED------------------ */
-    if (tempoCount >= 1 << 18) {
-      //digitalWrite(LED, LOW);
+    if (tempoCount >= 1 << 17) {
       fastWrite(LED, 0);
     } else {
       fastWrite(LED, 1);     
@@ -207,7 +208,6 @@ void play() {
         trigger = livePattern[stepCount++]; //
 
         if (buttonTrigger & 1) {
-          Serial.println("trig");
           livePattern[stepCount] |= B00000001;
         }
 
@@ -235,7 +235,6 @@ void play() {
       }
     }
   }
-  
 /* ----------------------------- */
 }
 
