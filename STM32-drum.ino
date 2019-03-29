@@ -1,5 +1,6 @@
 #include "CircularBuffer.h"
 #include "wavetables16.h"
+#include "GPIOWriteFast.h"
 
 #define AUDIO_CHANNEL_1_PIN PB8
 #define AUDIO_PWM_TIMER 4
@@ -7,11 +8,11 @@
 #define AUDIO_UPDATE_TIMER 2
 #define LOOP_TIMER 3
 
+PC_13 LED;
 
 HardwareTimer audioUpdateTimer(AUDIO_UPDATE_TIMER);
 HardwareTimer audioPwmTimer(AUDIO_PWM_TIMER);
 HardwareTimer buttonTimer(LOOP_TIMER);
-
 
 #define AUDIO_BITS 12
 #define HALF_AUDIO_BITS (1 << AUDIO_BITS)/2
@@ -65,6 +66,12 @@ void setup() {
   buttonTimer.resume();
 
   pinMode(PA5, INPUT_PULLUP);
+
+  //#define LED PC13
+  //LED PC_13;
+  LED.pinMode(OUTPUT);
+  // LED
+  pinMode(LED, OUTPUT);
 }
 
 //--------- Ringbuffer parameters ----------
@@ -83,11 +90,11 @@ uint16_t samplePointer[NUM_SAMPLES];
 
 uint8_t MODE = 1;
 long tempo = 300000;
-const uint8_t patternLength = 7;
+const uint8_t patternLength = 15;
 uint_fast8_t trigger = B00000000;
 uint_fast8_t buttonTrigger = B00000000;
 
-const uint8_t pattern[16] = {
+uint8_t livePattern[16] = {
   B00000001,
   B00100000,
   B00100000,
@@ -109,7 +116,7 @@ const uint8_t pattern[16] = {
   B00010000,
 };
 
-uint8_t livePattern[8] = {
+uint8_t alivePattern[8] = {
   B00000000,
   B00000000,
   B00000000,
@@ -120,24 +127,6 @@ uint8_t livePattern[8] = {
   B00000000,  
 };
 
-const uint8_t pattern2[16] = {
-  B01000001,
-  B00000100,
-  B01000001,
-  B00000000,
-  B01000010,
-  B00000000,
-  B01000100,
-  B01000000,
-  B01000001,
-  B00000100,
-  B01000000,
-  B00000000,
-  B01000011,
-  B00000000,
-  B01000001,
-  B01000000,
-};
 
 //--------- button interrupt ------//
 
@@ -145,24 +134,24 @@ const uint8_t pattern2[16] = {
 bool buttonLast = 1;
 bool button = 1;
 
-int delay1;
+int bDelay;
 void buttonInterrupt() {
   button = digitalRead(PA5);
   if (button == 0 && buttonLast == 1) {
     buttonTrigger = B00000001;
-    delay1 = 0;
+    bDelay = 0;
   }
-  if (button == 1 && delay1 > 10) {
+  if (button == 1 && bDelay > 10) {
     buttonTrigger = B00000000;
   }
-  delay1++;
+  bDelay++;
   buttonLast = button;
   //Serial.println(buttonTrigger);
 }
 
 //--------- pwmAudioOutput ------//
 
-static void pwmAudioOutput() {
+void pwmAudioOutput() {
   if (RingCount) { //If entry in FIFO..
     pwmWrite(AUDIO_CHANNEL_1_PIN, Ringbuffer[RingRead++] >> 4); //Output LSB of 16-bit DAC
     RingCount--;
@@ -179,7 +168,6 @@ void play() {
   int32_t sampleTotal = 0; // has to be signed
   uint_fast8_t stepCount = 0;
   uint32_t tempoCount = 1;
-  uint32_t playCount = 1;
 
   sampleCount[NUM_SAMPLES] = { 0 };
 
@@ -191,7 +179,7 @@ void play() {
           int16_t sample = (wavetables16[i][samplePointer[i]++]) - (1 << 15);//) >> 8;
           sample = ((sample * gain[i]) >> 8);
           sampleTotal += sample; // 
-          sampleCount[i]--;
+          sampleCount[i] --;
         }      
       }    
      //  hard clip - must be faster than `constrain()`?
@@ -203,17 +191,24 @@ void play() {
       RingWrite++;
       RingCount++;
     }
+  /* -------LED------------------ */
+    if (tempoCount >= 1 << 18) {
+      //digitalWrite(LED, LOW);
+      fastWrite(LED, 0);
+    } else {
+      fastWrite(LED, 1);     
+    }
 
   /* -------sequencer------------ */
  
     if (MODE == 1) {
-      if (!(tempoCount--)) { // every "tempo" ticks, do the thing
+      if (!(tempoCount--)) { // every "tempo" ticks, do the thing  
         tempoCount = tempo; // set it back to the tempo ticks
         trigger = livePattern[stepCount++]; //
 
         if (buttonTrigger & 1) {
           Serial.println("trig");
-          livePattern[stepCount] = B00000001;
+          livePattern[stepCount] |= B00000001;
         }
 
   
@@ -230,18 +225,14 @@ void play() {
     else {
       stepCount = 0;
       tempoCount = 1;
-        for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
-          if (trigger & 1<<i) {
-            //Serial.println("trig");
+      for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
+        if (trigger & 1<<i) {
+          //Serial.println("trig");
 
-            samplePointer[i] = 0;
-            sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
-          }
-        } 
-        // if (trigger & 1<<0) {
-        //   samplePointer[0] = 0;
-        //   sampleCount[0] = wavetableLengths16[0]; // number of bytes in sample
-        // }
+          samplePointer[i] = 0;
+          sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
+        }
+      }
     }
   }
   
