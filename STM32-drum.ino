@@ -1,18 +1,24 @@
 #include "CircularBuffer.h"
 #include "wavetables16.h"
 #include "GPIOWriteFast.h"
+// #include <SPI.h>
+// #include <Wire.h>
+// #include <Adafruit_SH1106.h>
 
-#define AUDIO_CHANNEL_1_PIN PB8
-#define AUDIO_PWM_TIMER 4
+#define OLED_RESET 4
+//Adafruit_SH1106 display(OLED_RESET);
+
+#define AUDIO_CHANNEL_1_PIN PB1//PB8 - must relate to the timer chosen for PWM
+#define AUDIO_PWM_TIMER 3//4
 // The timer used for running the audio update loop. NOTE: Timer 3 appears to clash with SPI DMA transfers under some circumstances
 #define AUDIO_UPDATE_TIMER 2
-#define LOOP_TIMER 3
+#define BUTTON_TIMER 4//3
 
 PC_13 LED;
 
 HardwareTimer audioUpdateTimer(AUDIO_UPDATE_TIMER);
 HardwareTimer audioPwmTimer(AUDIO_PWM_TIMER);
-HardwareTimer buttonTimer(LOOP_TIMER);
+HardwareTimer buttonTimer(BUTTON_TIMER);
 
 #define AUDIO_BITS 12
 #define HALF_AUDIO_BITS (1 << AUDIO_BITS)/2
@@ -22,7 +28,8 @@ HardwareTimer buttonTimer(LOOP_TIMER);
 //CircularBuffer<unsigned int> output_buffer;  // fixed size 256
 
 void setup() {
-  Serial.begin(115200); 
+  Serial.begin(115200);
+
 
   // audio update timer is running at 16kHz or whatever, but audio_pwm_timer is the thing that is doing the output at/near full speed
   audioUpdateTimer.pause();
@@ -58,7 +65,7 @@ void setup() {
   buttonTimer.pause();
 //  buttonTimer.setPrescaleFactor(F_CPU/AUDIO_RATE/AUDIO_BITS);
 //  buttonTimer.setOverflow(S);
-  buttonTimer.setPeriod(10000);
+  buttonTimer.setPeriod(40000);
   buttonTimer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
   buttonTimer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
   buttonTimer.attachCompare1Interrupt(buttonInterrupt);
@@ -66,12 +73,27 @@ void setup() {
   buttonTimer.resume();
 
   pinMode(PA5, INPUT_PULLUP);
+  pinMode(PA4, INPUT_ANALOG);
 
   //#define LED PC13
   //LED PC_13;
   LED.pinMode(OUTPUT);
   // LED
-  pinMode(LED, OUTPUT);
+  //pinMode(LED, OUTPUT);
+
+
+  // init OLED
+  //display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+
+  // display.display();
+  // delay(2000);
+  // display.clearDisplay();
+
+  //     display.setTextSize(1);
+  // display.setTextColor(WHITE);
+  // display.setCursor(0,0);
+  // display.println("Hello, world!");
+
 }
 
 //--------- Ringbuffer parameters ----------
@@ -89,10 +111,10 @@ uint16_t samplePointer[NUM_SAMPLES];
 //--------- Sequencer/Play parameters ----------//
 
 uint8_t MODE = 1;
-long tempo = 400000;
+volatile long tempo = 400000;
 const uint8_t patternLength = 15;
 uint_fast8_t trigger = B00000000;
-uint_fast8_t buttonTrigger = B00000000;
+volatile uint_fast8_t buttonTrigger = B00000000;
 
 //--------- Patterns ----------------------//
 
@@ -135,6 +157,7 @@ uint8_t alivePattern[8] = {
 
 bool buttonLast = 1;
 bool button = 1;
+int pot;
 
 int bDelay;
 void buttonInterrupt() {
@@ -148,7 +171,9 @@ void buttonInterrupt() {
   }
   bDelay++;
   buttonLast = button;
-  //Serial.println(buttonTrigger);
+
+  tempo = analogRead(PA4) << 7;
+
 }
 
 //--------- pwmAudioOutput ------//
@@ -165,15 +190,19 @@ void pwmAudioOutput() {
 void play() {
   // everything here optimized for processing speed not code quality - inline faster?
 
+
   /* -------sample buffer write------------ */
 
   int32_t sampleTotal = 0; // has to be signed
   uint_fast8_t stepCount = 0;
   uint32_t tempoCount = 1;
+    //pot = analogRead(PA4);
+  //Serial.println(buttonTrigger);
 
   sampleCount[NUM_SAMPLES] = { 0 };
 
   while(1) {
+
     if (RingCount < BUFFERSIZE_M1) { // if space in ringbuffer
       sampleTotal = 0;
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
@@ -205,9 +234,12 @@ void play() {
     if (MODE == 1) {
       if (!(tempoCount--)) { // every "tempo" ticks, do the thing  
         tempoCount = tempo; // set it back to the tempo ticks
+
         trigger = livePattern[stepCount++]; //
+                     // Serial.println(tempo);
 
         if (buttonTrigger & 1) {
+          //Serial.print("trigger");
           livePattern[stepCount] |= B00000001;
         }
 
