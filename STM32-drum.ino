@@ -108,6 +108,8 @@ void setup() {
 
   button0.begin();
   button1.begin();
+    delay(1000);
+
 
 }
 
@@ -127,7 +129,6 @@ uint16_t samplePointer[NUM_SAMPLES];
 
 uint8_t MODE = 1;
 volatile long tempo = 400000;
-const uint8_t patternLength = 15;
 uint_fast8_t trigger = B00000000;
 volatile uint_fast8_t buttonTrigger = B00000000;
 
@@ -155,12 +156,17 @@ void controlInterrupt() {
 
   if(button0.read() > 40) {
     //Serial.println("trig");
-    buttonTrigger = B00000001;
+    buttonTrigger |= B00000001;
   }; 
   if(button1.read() > 40) {
     //Serial.println("trig");
-    buttonTrigger = B00000010;
-  }; 
+    buttonTrigger |= B00000010;
+  } 
+  
+  // else {
+  // //   buttonTrigger = B00000000;
+  // // }
+
 
 }
 
@@ -242,16 +248,15 @@ void play() {
 
         trigger = livePattern[stepCount++];
 
-        if (buttonTrigger & 1) {
-          //Serial.print("trigger");
-          livePattern[stepCount] |= B00000001;
+        if (buttonTrigger != B00000000) {
+          livePattern[stepCount] |= buttonTrigger;
         }
 
-  
         if (stepCount > patternLength) stepCount = 0;
         // read the pattern bytes, each bit triggers a sample
         for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
           if (trigger & 1<<i) {
+
             samplePointer[i] = 0;
             sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
           }
