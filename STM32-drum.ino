@@ -3,13 +3,18 @@
 #include "GPIOWriteFast.h"
 #include <ADCTouchSensor.h>
 #include "patterns.h"
-// #include <Adafruit_SH1106.h>
+//#include <Adafruit_SSD1306.h>
+#include <Adafruit_SH1106.h>
+#include <Adafruit_GFX.h>
+
+
 
 
 //--------- Display ----------//
 
 PC_13 LED;
-//Adafruit_SH1106 display(OLED_RESET);
+Adafruit_SH1106 display(-1);
+//Adafruit_SSD1306 display(-1);
 
 
 //--------- Controls ----------//
@@ -39,6 +44,18 @@ HardwareTimer controlTimer(CONTROL_TIMER);
 
 void setup() {
   Serial.begin(115200);
+  display.begin(SH1106_SWITCHCAPVCC, 0x3C);
+  //display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
+  delay(1000);
+  display.clearDisplay();
+  display.display();
+
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+  display.setCursor(0,0);
+  display.println("Hello, world!");
+  display.display();
+
 
   //--------- Audio Update Timer setup ----------//
 
@@ -57,7 +74,7 @@ void setup() {
   audioUpdateTimer.refresh();
   audioUpdateTimer.resume();
 
-  //--------- Audio PWM Timer setup ----------//
+  // //--------- Audio PWM Timer setup ----------//
 
   pinMode(AUDIO_CHANNEL_1_PIN, PWM);
 
@@ -74,10 +91,9 @@ void setup() {
     audioPwmTimer.setOverflow(1 << AUDIO_BITS);
 
   //--------- Control Timer setup ----------//
+  nvic_irq_set_priority(NVIC_USART1, 1);
 
   controlTimer.pause();
-  //  buttonTimer.setPrescaleFactor(F_CPU/AUDIO_RATE/AUDIO_BITS);
-  //  buttonTimer.setOverflow(S);
   controlTimer.setPeriod(40000);
   controlTimer.setChannel1Mode(TIMER_OUTPUT_COMPARE);
   controlTimer.setCompare(TIMER_CH1, 1); // Interrupt 1 count after each update
@@ -92,17 +108,8 @@ void setup() {
 
   LED.pinMode(OUTPUT);
 
-    // init OLED
-  //display.begin(SH1106_SWITCHCAPVCC, 0x3C);
 
-  // display.display();
-  // delay(2000);
-  // display.clearDisplay();
 
-  //     display.setTextSize(1);
-  // display.setTextColor(WHITE);
-  // display.setCursor(0,0);
-  // display.println("Hello, world!");
 
   //--------- Controls setup ----------//
 
@@ -213,6 +220,7 @@ void play() {
   while(1) {
 
     if (RingCount < BUFFERSIZE_M1) { // if space in ringbuffer
+
       sampleTotal = 0;
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
         if (sampleCount[i]) {
@@ -245,8 +253,15 @@ void play() {
     if (MODE == 1) {
       if (!(tempoCount--)) { // every "tempo" ticks, do the thing  
         tempoCount = tempo; // set it back to the tempo ticks
+        Serial.println(RingCount);
 
         trigger = livePattern[stepCount++];
+        display.setCursor(0, 20);
+        display.println("yo");
+        display.display();
+        //delay(1);
+
+
 
         if (buttonTrigger != B00000000) {
           livePattern[stepCount] |= buttonTrigger;
