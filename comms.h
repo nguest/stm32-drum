@@ -1,6 +1,6 @@
 #include <SPI.h>
 
-#define SS PA4
+#define SS PA14
 
 //--------- SPI setup ----------//
 
