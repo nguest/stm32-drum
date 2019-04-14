@@ -3,19 +3,20 @@
 #include "GPIOWriteFast.h"
 #include <ADCTouchSensor.h>
 #include "patterns.h"
-//#include <Adafruit_SSD1306.h>
-#include <Adafruit_SH1106.h>
-#include <Adafruit_GFX.h>
+#include <SPI.h>
 
+#define SPI1_NSS_PIN PB12    //SPI_1 Chip Select pin is PA4. You can change it to the STM32 pin you want.
+//#define SPI2_NSS_PIN PB12   //SPI_2 Chip Select pin is PB12. You can change it to the STM32 pin you want.
 
+//SPIClass SPI_2(2); //Create an instance of the SPI Class called SPI_2 that uses the 2nd SPI Port
+byte data;
+
+#define SS PA4
 
 
 //--------- Display ----------//
 
 PC_13 LED;
-Adafruit_SH1106 display(-1);
-//Adafruit_SSD1306 display(-1);
-
 
 //--------- Controls ----------//
 
@@ -41,20 +42,15 @@ HardwareTimer controlTimer(CONTROL_TIMER);
 #define AUDIO_RATE 22050
 
 
-
 void setup() {
   Serial.begin(115200);
-  display.begin(SH1106_SWITCHCAPVCC, 0x3C);
-  //display.begin(SSD1306_SWITCHCAPVCC, 0x3C);
-  delay(1000);
-  display.clearDisplay();
-  display.display();
 
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0);
-  display.println("Hello, world!");
-  display.display();
+  //--------- SPI setup ----------//
+
+  pinMode(SS,OUTPUT); // Puts SS as Output
+  SPI.begin(); // Begins the SPI commnuication
+  SPI.setClockDivider(SPI_CLOCK_DIV32); // Sets clock for SPI communication at 16 (72/16=4.5Mhz)
+  digitalWrite(SS,HIGH); // Setting SlaveSelect as HIGH (So master doesnt connnect with slave)
 
 
   //--------- Audio Update Timer setup ----------//
@@ -91,7 +87,7 @@ void setup() {
     audioPwmTimer.setOverflow(1 << AUDIO_BITS);
 
   //--------- Control Timer setup ----------//
-  nvic_irq_set_priority(NVIC_USART1, 1);
+  //nvic_irq_set_priority(NVIC_USART1, 1);
 
   controlTimer.pause();
   controlTimer.setPeriod(40000);
@@ -101,12 +97,14 @@ void setup() {
   controlTimer.refresh();
   controlTimer.resume();
 
-  pinMode(PA5, INPUT_PULLUP);
-  pinMode(PA4, INPUT_ANALOG);
+  // pinMode(PA5, INPUT_PULLUP);
+  // pinMode(PA4, INPUT_ANALOG);
 
   //--------- Display setup ----------//
 
   LED.pinMode(OUTPUT);
+  //Wire.begin();
+    delay(1000);
 
 
 
@@ -135,7 +133,7 @@ uint16_t samplePointer[NUM_SAMPLES];
 //--------- Sequencer/Play parameters ----------//
 
 uint8_t MODE = 1;
-volatile long tempo = 400000;
+volatile long tempo = 200000;
 uint_fast8_t trigger = B00000000;
 volatile uint_fast8_t buttonTrigger = B00000000;
 
@@ -159,7 +157,7 @@ void controlInterrupt() {
   bDelay++;
   buttonLast = button;
 
-  tempo = averageAnalogReadings(PA4) << 7;
+  //tempo = averageAnalogReadings(PA4) << 7;
 
   if(button0.read() > 40) {
     //Serial.println("trig");
@@ -173,7 +171,6 @@ void controlInterrupt() {
   // else {
   // //   buttonTrigger = B00000000;
   // // }
-
 
 }
 
@@ -216,6 +213,8 @@ void play() {
   uint32_t tempoCount = 1;
 
   sampleCount[NUM_SAMPLES] = { 0 };
+  byte MasterSend,MasterReceive;
+
 
   while(1) {
 
@@ -249,23 +248,21 @@ void play() {
     }
 
   /* -------sequencer------------ */
- 
     if (MODE == 1) {
       if (!(tempoCount--)) { // every "tempo" ticks, do the thing  
         tempoCount = tempo; // set it back to the tempo ticks
-        Serial.println(RingCount);
 
+        MasterSend = (byte)stepCount;
+        digitalWrite(SS, LOW); // Starts communication with Slave connected to master
+        MasterReceive = SPI.transfer(MasterSend); // Send the mastersend value to slave also receives value from slave
+        digitalWrite(SS, HIGH);
+
+  
         trigger = livePattern[stepCount++];
-        display.setCursor(0, 20);
-        display.println("yo");
-        display.display();
-        //delay(1);
 
-
-
-        if (buttonTrigger != B00000000) {
-          livePattern[stepCount] |= buttonTrigger;
-        }
+        // if (buttonTrigger != B00000000) {
+        //   livePattern[stepCount] |= buttonTrigger;
+        // }
 
         if (stepCount > patternLength) stepCount = 0;
         // read the pattern bytes, each bit triggers a sample
@@ -275,7 +272,8 @@ void play() {
             samplePointer[i] = 0;
             sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
           }
-        } 
+        }
+
       }
     }
     else {
@@ -294,8 +292,59 @@ void play() {
 /* ----------------------------- */
 }
 
+void sendSPI() {
+  digitalWrite(SPI1_NSS_PIN, LOW); // manually take CSN low for SPI_1 transmission
+  data = SPI.transfer(0x55); //Send the HEX data 0x55 over SPI-1 port and store the received byte to the <data> variable.
+  digitalWrite(SPI1_NSS_PIN, HIGH); // manually take CSN high between spi transmissions
+  Serial.println(data);
+}
+
+
 //--------- Main Loop ----------//
 
 void loop() {
   play();    
 }
+
+
+// void setup() {
+
+//   // Setup SPI 1
+//   SPI.begin(); //Initialize the SPI_1 port.
+//   SPI.setBitOrder(MSBFIRST); // Set the SPI_1 bit order
+//   SPI.setDataMode(SPI_MODE0); //Set the  SPI_2 data mode 0
+//   SPI.setClockDivider(SPI_CLOCK_DIV16);      // Slow speed (72 / 16 = 4.5 MHz SPI_1 speed)
+//   pinMode(SPI1_NSS_PIN, OUTPUT);
+
+//   // Setup SPI 2
+//   SPI_2.begin(); //Initialize the SPI_2 port.
+//   SPI_2.setBitOrder(MSBFIRST); // Set the SPI_2 bit order
+//   SPI_2.setDataMode(SPI_MODE0); //Set the  SPI_2 data mode 0
+//   SPI_2.setClockDivider(SPI_CLOCK_DIV16);  // Use a different speed to SPI 1
+//   pinMode(SPI2_NSS_PIN, OUTPUT);
+
+
+// }
+
+// void loop() {
+
+//   sendSPI();
+//   sendSPI2();
+
+//   delayMicroseconds(10);    //Delay 10 micro seconds.
+// }
+
+// void sendSPI()
+// {
+//   digitalWrite(SPI1_NSS_PIN, LOW); // manually take CSN low for SPI_1 transmission
+//   data = SPI.transfer(0x55); //Send the HEX data 0x55 over SPI-1 port and store the received byte to the <data> variable.
+//   digitalWrite(SPI1_NSS_PIN, HIGH); // manually take CSN high between spi transmissions
+// }
+
+
+// void sendSPI2()
+// {
+//   digitalWrite(SPI2_NSS_PIN, LOW); // manually take CSN low for SPI_2 transmission
+//   data = SPI_2.transfer(0x55); //Send the HEX data 0x55 over SPI-2 port and store the received byte to the <data> variable.
+//   digitalWrite(SPI2_NSS_PIN, HIGH); // manually take CSN high between spi transmissions
+// }
