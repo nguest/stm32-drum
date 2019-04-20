@@ -1,4 +1,3 @@
-#include "CircularBuffer.h"
 #include "wavetables16.h"
 #include "GPIOWriteFast.h"
 #include <ADCTouchSensor.h>
@@ -74,21 +73,18 @@ void play() {
     }
 
   /* -------sequencer------------ */
+  
     if (MODE == 1) {
       if (!(tempoCount--)) { // every "tempo" ticks, do the thing  
         tempoCount = tempo; // set it back to the tempo ticks
-  
+
+        MasterReceive = WriteSPI(stepCount, livePattern[stepCount]);
+
         trigger = livePattern[stepCount++];
         
-        uint16_t MasterSend = (stepCount << 8) | livePattern[stepCount];
-        //MasterSend = (byte)stepCount;
-        digitalWrite(SS, LOW); // Starts communication with Slave connected to master
-        MasterReceive = SPI.transfer16(MasterSend); // Send the mastersend value to slave also receives value from slave
-        //MasterReceive = SPI.transfer(livePattern[stepCount]); // Send the mastersend value to slave also receives value from slave
-        digitalWrite(SS, HIGH);
-        // if (buttonTrigger != B00000000) {
-        //   livePattern[stepCount] |= buttonTrigger;
-        // }
+        if (RECORD && buttonTrigger != B00000000) {
+          livePattern[stepCount] |= buttonTrigger;
+        }
 
         if (stepCount > patternLength) stepCount = 0;
         // read the pattern bytes, each bit triggers a sample

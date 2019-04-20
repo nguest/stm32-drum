@@ -1,12 +1,36 @@
 #include <SPI.h>
 
-#define SS PA14
+#define SS PB12 //PA14 // chip select
+
+//SPIClass SPI(PB5,PB4,PB3); // MOSI, MISO, CLK
+//SPI(SS);
+
+
+
+//SPI_2.begin();
+
+
 
 //--------- SPI setup ----------//
 
 void setupSPI() {
-  pinMode(SS,OUTPUT); // Puts SS as Output
+  pinMode(SS,OUTPUT); // Puts chipselect as Output
+  
+  SPI.setModule(2); // use SPI-2 - PB15/14/13/12
+  SPI.setClockDivider(SPI_CLOCK_DIV32); // Sets clock for SPI communication at 16 (72/16=4.5Mhz)
   SPI.begin(); // Begins the SPI commnuication
-  SPI.setClockDivider(SPI_CLOCK_DIV64); // Sets clock for SPI communication at 16 (72/16=4.5Mhz)
+
   digitalWrite(SS,HIGH); // Setting SlaveSelect as HIGH (So master doesnt connnect with slave)
 }
+
+//--------- SPI Write ----------//
+
+uint8_t WriteSPI(uint8_t var1, uint8_t var2) {
+  digitalWrite(SS, LOW); // Starts communication with Slave connected to master
+  SPI.transfer(var1); // Send the mastersend value to slave also receives value from slave
+  uint8_t MasterReceive = SPI.transfer(var2); // Send the mastersend value to slave also receives value from slave
+  delayMicroseconds(10);
+  SPI.transfer((byte)255);
+  digitalWrite(SS, HIGH);
+  return MasterReceive;
+};

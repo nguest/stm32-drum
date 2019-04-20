@@ -1,3 +1,6 @@
+//SPI.beginTransaction(SPISettings(16000000, MSBFIRST, SPI_MODE0));
+
+
 //--------- Ringbuffer parameters ----------//
 
 const uint8_t BUFFERSIZE = 256;
@@ -13,6 +16,7 @@ uint16_t samplePointer[NUM_SAMPLES];
 //--------- Sequencer/Play parameters ----------//
 
 uint8_t MODE = 1;
+bool RECORD = 0;
 volatile long tempo = 200000;
 uint_fast8_t trigger = B00000000;
 
