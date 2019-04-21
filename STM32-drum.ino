@@ -77,13 +77,15 @@ void play() {
     if (MODE == 1) {
       if (!(tempoCount--)) { // every "tempo" ticks, do the thing  
         tempoCount = tempo; // set it back to the tempo ticks
+        readTouch(); // read touch buttons
 
         MasterReceive = WriteSPI(stepCount, livePattern[stepCount]);
 
         trigger = livePattern[stepCount++];
-        
-        if (RECORD && buttonTrigger != B00000000) {
-          livePattern[stepCount] |= buttonTrigger;
+        Serial.print("RECORD ");Serial.print(RECORD);Serial.print(" -- ");Serial.println(buttonTrigger);
+        if (RECORD && (buttonTrigger != B00000000)) {
+          livePattern[stepCount] ^= buttonTrigger;
+          buttonTrigger = B00000000;
         }
 
         if (stepCount > patternLength) stepCount = 0;

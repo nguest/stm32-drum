@@ -22,7 +22,7 @@ uint8_t alivePattern[16] = {
   B00010000,
 };
 
-uint8_t livePattern[16] = {
+volatile uint8_t livePattern[16] = {
   B00000001,
   B00000000,
   B00000000,
