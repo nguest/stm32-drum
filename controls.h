@@ -35,6 +35,7 @@ void setupControls() {
 // for (uint8_t i; i < 8; i++) {
 //  ADCTouchSensor touch[i] = ADCTouchSensor(touchPins[i], GROUNDED_PIN);
 // }
+  touch[0].begin();
   touch[1].begin();
   touch[2].begin();
   touch[3].begin();
@@ -97,7 +98,11 @@ void controlInterrupt() {
 
 void readTouch() {
   const uint16_t S = 50;
-
+  if(touch[0].read() > S) {
+    Serial.print("trig0 ");
+    Serial.println(touch[0].read());
+    buttonTrigger |= B00000001;
+  }
   if(touch[1].read() > S) {
     Serial.print("trig1 ");
     Serial.println(touch[1].read());

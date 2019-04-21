@@ -43,7 +43,10 @@ ISR (SPI_STC_vect) {
 }
 
 void renderIndicator() {
-  
+  char tmp_string[8];
+  itoa(buffer[0], tmp_string, 10);
+  u8g2.drawStr(0,10, tmp_string);
+  u8g2.sendBuffer();
 }
 
 void renderPattern() {
@@ -58,7 +61,8 @@ void renderPattern() {
       }
     }
   }
-  u8g2.sendBuffer();
+  renderIndicator();
+
 }
 
 void loop() {
@@ -72,8 +76,6 @@ void loop() {
   SPDR = Slavesend;
   
   
-  char tmp_string[8];
-  itoa(buffer[0], tmp_string, 10);
 
 //  u8g2.clearBuffer();          // clear the internal memory
 //  //u8g2.setContrast(10); 0-255
@@ -82,6 +84,8 @@ void loop() {
 //  //u8g2.setDrawColor(2); // XOR
 //  //u8g2.drawBox(10,40,8,8);
 //  u8g2.sendBuffer();          // transfer internal memory to the display
-//  //delay(20);  
+//  //delay(20);
+  //renderIndicator();
   renderPattern();
+  
 }
