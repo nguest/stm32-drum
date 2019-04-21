@@ -30,10 +30,11 @@ ISR (SPI_STC_vect) {
   if (index < sizeof buffer) {
     buffer[index++] = SlaveReceived;
   }
-  if(SlaveReceived == 255) {
+  if (SlaveReceived == 255) {
     received = true;
   }
-  pattern[buffer[0]] = buffer[1];
+  
+  pattern[buffer[0]] = buffer[1]; // write 2nd byte
 //  if (!(SPSR & (1<<SPIF)) == 0) {     // Wait the end of the transmission
 //    received = true;                        // Sets received as True 
 //  }
@@ -43,24 +44,41 @@ ISR (SPI_STC_vect) {
 }
 
 void renderIndicator() {
+  // display stepCount number
   char tmp_string[8];
   itoa(buffer[0], tmp_string, 10);
   u8g2.drawStr(0,10, tmp_string);
-  u8g2.sendBuffer();
+
+  // display moving box
+  u8g2.setDrawColor(2); // XOR
+  u8g2.drawBox((buffer[0])*8,10,8,54);
+  
+   u8g2.sendBuffer();
+
+}
+
+void renderStatus() {
+  //u8g2.setDrawColor(0);
+//  u8g2.drawFrame(24,10,80,44);
+//  u8g2.setDrawColor(0);
+//  u8g2.drawBox(25,11,78,42);
+
+ // u8g2.drawRBox(50, 10,25,40, 40);
 }
 
 void renderPattern() {
-  const uint8_t offsetY = 8;
+  const uint8_t offsetY = 10;
   u8g2.clearBuffer();          // clear the internal memory
   //u8g2.clearDisplay();
 
-  for (uint8_t i = 0; i < 8; i++) {
-    for (uint8_t j = 0; j < 16; j++) {    
-      if (pattern[j] & 1<<i) {
-        u8g2.drawBox(j*8,i*8+offsetY,8,8);
+  for (uint8_t j = 0; j < 8; j++) {
+    for (uint8_t i = 0; i < 16; i++) {    
+      if (pattern[i] & 1<<j) {
+        u8g2.drawBox(i*8 + 1, j*8 + offsetY + 1, 6, 6);
       }
     }
   }
+  renderStatus();
   renderIndicator();
 
 }
