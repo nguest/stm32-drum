@@ -15,6 +15,8 @@ ADCTouchSensor touch[8] = {
   // = new ADCTouchSensor[8];
 const uint8_t touchPins[8] = { PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7 };
 
+#define joystick1Pin PB0
+
 // ADCTouchSensor button0 = ADCTouchSensor(PA0, GROUNDED_PIN);
 // ADCTouchSensor button1 = ADCTouchSensor(PA1, GROUNDED_PIN);
 // ADCTouchSensor button2 = ADCTouchSensor(PA2, GROUNDED_PIN);
@@ -49,6 +51,8 @@ void setupControls() {
   pinMode(buttonPins[9], INPUT_PULLUP);
   pinMode(recordLEDPin, OUTPUT);
 
+  pinMode(joystick1Pin, INPUT_ANALOG);
+
 };
 
 //--------- button interrupt ------//
@@ -60,6 +64,26 @@ volatile uint_fast8_t buttonTrigger = B00000000;
 volatile uint_fast8_t playTrigger = 0;
 
 int bDelay;
+int jDelay;
+
+uint8_t readJoystick() {
+  //if (jDelay  20) return 0;
+  uint16_t joystickLR = analogRead(joystick1Pin);
+  uint16_t threshold = 100;
+
+  if (jDelay > 20) {
+    if (joystickLR < threshold) {
+      jDelay = 0;
+      return 1;
+    }
+    if (joystickLR > 4096 - threshold) {
+      jDelay = 0;
+      return 2;
+    }
+  }
+  jDelay++;
+  return 0;
+}
 
 void controlInterrupt() {
   button[8] = digitalRead(buttonPins[8]);
@@ -93,7 +117,14 @@ void controlInterrupt() {
   }
   buttonLast[9] = button[9];
 
+  // 
+  //joystick = readJoystick();
+  //Serial.println(joystick);
+  
+
 }
+
+
 
 
 void readTouch() {

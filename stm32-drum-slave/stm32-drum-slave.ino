@@ -1,14 +1,22 @@
 #include <Arduino.h>
 #include <U8g2lib.h>
 #include <SPI.h>
+#include <Encoder.h>
+
 
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
+int tempo = 200;
 volatile boolean received;
 volatile byte SlaveReceived, Slavesend;
 uint8_t index;
 uint8_t buffer[2];
 uint8_t pattern[16];
+
+long oldPosition  = -999;
+int pulses, A_SIG=0, B_SIG=1;
+
+//Encoder encoder(2,3);
 
 void setup() {
   Serial.begin(9600);
@@ -20,6 +28,12 @@ void setup() {
   SPCR |= _BV(SPE);                       // Turn on SPI in Slave Mode
   received = false;
   SPI.attachInterrupt();                  // Interuupt ON is set for SPI commnucation
+  pinMode(2, INPUT_PULLUP);
+  pinMode(3, INPUT_PULLUP);
+  attachInterrupt(0, A_RISE, RISING);
+  attachInterrupt(1, B_RISE, RISING);
+
+  
 }
 
 ISR (SPI_STC_vect) {
@@ -27,10 +41,17 @@ ISR (SPI_STC_vect) {
   SlaveReceived = SPDR;                   // Value received from master STM32F103C8 is stored in variable slavereceived
   //Serial.print("SPDR ");Serial.println(SlaveReceived);
   //Serial.println(SlaveReceived);
+  if (SlaveReceived == 's') {
+    Serial.println("um");
+    return;
+  }
   if (index < sizeof buffer) {
     buffer[index++] = SlaveReceived;
   }
-  if (SlaveReceived == 255) {
+ // if (SlaveReceived == 255) {
+   // received = true;
+  //}
+  if (index == sizeof buffer) {
     received = true;
   }
   
@@ -53,7 +74,7 @@ void renderIndicator() {
   u8g2.setDrawColor(2); // XOR
   u8g2.drawBox((buffer[0])*8,10,8,54);
   
-   u8g2.sendBuffer();
+  u8g2.sendBuffer();
 
 }
 
@@ -82,6 +103,65 @@ void renderPattern() {
   renderIndicator();
 
 }
+//
+//void onEncoderChange() {
+//  //long newPosition = encoder.read();
+//  Serial.print(digitalRead(2));Serial.print(" ");Serial.println(digitalRead(3));
+// // Serial.println(newPosition);
+////  if (newPosition != oldPosition) {
+////    oldPosition = newPosition;
+////    
+////  }
+//
+//}
+void A_RISE(){
+ detachInterrupt(0);
+ A_SIG=1;
+ 
+ if(B_SIG==0)
+ pulses++;//moving forward
+ if(B_SIG==1)
+ pulses--;//moving reverse
+ Serial.println(pulses);
+ attachInterrupt(0, A_FALL, FALLING);
+}
+
+void A_FALL(){
+  detachInterrupt(0);
+ A_SIG=0;
+ 
+ if(B_SIG==1)
+ pulses++;//moving forward
+ if(B_SIG==0)
+ pulses--;//moving reverse
+ Serial.println(pulses);
+ attachInterrupt(0, A_RISE, RISING);  
+}
+
+void B_RISE(){
+ detachInterrupt(1);
+ B_SIG=1;
+ 
+ if(A_SIG==1)
+ pulses++;//moving forward
+ if(A_SIG==0)
+ pulses--;//moving reverse
+ Serial.println(pulses);
+ attachInterrupt(1, B_FALL, FALLING);
+}
+
+void B_FALL(){
+ detachInterrupt(1);
+ B_SIG=0;
+ 
+ if(A_SIG==0)
+ pulses++;//moving forward
+ if(A_SIG==1)
+ pulses--;//moving reverse
+ Serial.println(pulses);
+ attachInterrupt(1, B_RISE, RISING);
+}
+
 
 void loop() {
   if (received) {
@@ -93,7 +173,8 @@ void loop() {
   Slavesend = 17; // random byte
   SPDR = Slavesend;
   
-  
+  //onEncoderChange();
+
 
 //  u8g2.clearBuffer();          // clear the internal memory
 //  //u8g2.setContrast(10); 0-255

@@ -69,7 +69,7 @@ void play() {
     if (tempoCount >= 1 << 17) {
       fastWrite(LED, 0);
     } else {
-      fastWrite(LED, 1);     
+      fastWrite(LED, 1);
     }
 
   /* -------sequencer------------ */
@@ -79,10 +79,10 @@ void play() {
         tempoCount = tempo; // set it back to the tempo ticks
         readTouch(); // read touch buttons
 
-        MasterReceive = WriteSPI(stepCount, livePattern[stepCount]);
+        MasterReceive = WriteSPI('s', stepCount, livePattern[stepCount]);
 
         trigger = livePattern[stepCount++];
-        Serial.print("RECORD ");Serial.print(RECORD);Serial.print(" -- ");Serial.println(buttonTrigger);
+        //Serial.print("RECORD ");Serial.print(RECORD);Serial.print(" -- ");Serial.println(buttonTrigger);
         if (RECORD && (buttonTrigger != B00000000)) {
           livePattern[stepCount] ^= buttonTrigger;
           buttonTrigger = B00000000;
@@ -100,7 +100,10 @@ void play() {
 
       }
     }
-    else {
+
+
+    /* -------player------------ */  
+    else if (MODE == 0){
       stepCount = 0;
       tempoCount = 1;
       for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
@@ -111,6 +114,11 @@ void play() {
           sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
         }
       }
+    }
+    else {
+      stepCount = 0;
+      tempoCount = 1;
+      Serial.println(joystick);
     }
   }
 /* ----------------------------- */

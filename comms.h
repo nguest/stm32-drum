@@ -25,12 +25,15 @@ void setupSPI() {
 
 //--------- SPI Write ----------//
 
-uint8_t WriteSPI(uint8_t var1, uint8_t var2) {
+uint8_t WriteSPI(char command, uint8_t var1, uint8_t var2) {
   digitalWrite(SS, LOW); // Starts communication with Slave connected to master
+  SPI.transfer(command);
+  delayMicroseconds(20);
   SPI.transfer(var1); // Send the mastersend value to slave also receives value from slave
+  delayMicroseconds(20);
   uint8_t MasterReceive = SPI.transfer(var2); // Send the mastersend value to slave also receives value from slave
-  delayMicroseconds(10);
-  SPI.transfer((byte)255);
+  delayMicroseconds(20);
+  //SPI.transfer((byte)255);
   digitalWrite(SS, HIGH);
   return MasterReceive;
 };
