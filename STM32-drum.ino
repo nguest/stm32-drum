@@ -3,8 +3,8 @@
 #include <ADCTouchSensor.h>
 #include "globals.h"
 #include "patterns.h"
-#include "controls.h"
 #include "comms.h"
+#include "controls.h"
 #include "timers.h"
 
 
@@ -80,6 +80,10 @@ void play() {
         readTouch(); // read touch buttons
 
         MasterReceive = WriteSPI('s', stepCount, livePattern[stepCount]);
+        // digitalWrite(SS, LOW); 
+        // MasterReceive = SPI.transfer(stepCount);
+        // delayMicroseconds(20);
+        // digitalWrite(SS, HIGH); 
 
         trigger = livePattern[stepCount++];
         //Serial.print("RECORD ");Serial.print(RECORD);Serial.print(" -- ");Serial.println(buttonTrigger);

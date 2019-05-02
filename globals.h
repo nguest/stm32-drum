@@ -17,7 +17,7 @@ uint16_t samplePointer[NUM_SAMPLES];
 
 uint8_t MODE = 1; // 1 play / 0 record /
 bool RECORD = 0;
-volatile long tempo = 200000;
+volatile long tempo = 4000000;
 uint_fast8_t trigger = B00000000;
 
 //--------- Control parameters ----------//

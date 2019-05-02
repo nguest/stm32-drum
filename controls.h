@@ -1,5 +1,7 @@
 //--------- Controls ----------//
 
+
+
 # define GROUNDED_PIN -1
 
 ADCTouchSensor touch[8] = {
@@ -104,7 +106,7 @@ void controlInterrupt() {
     RECORD = (MODE == 0) ? 0 : RECORD;
     Serial.print("MODE ");
     Serial.println(MODE);
-
+    WriteSPI('m', MODE, 0);
   }
   buttonLast[8] = button[8];
 
@@ -113,11 +115,12 @@ void controlInterrupt() {
     RECORD = (RECORD == 1) ? 0 : 1;
     Serial.print("RECORD ");
     Serial.println(RECORD);
+    WriteSPI('m', 'r');
     digitalWrite(recordLEDPin, HIGH);
   }
   buttonLast[9] = button[9];
 
-  // 
+  // hmmmm
   //joystick = readJoystick();
   //Serial.println(joystick);
   
