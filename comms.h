@@ -29,13 +29,14 @@ uint8_t WriteSPI(char command, uint8_t var1, uint8_t var2 = 'x') {
   //SPI.transfer(command);
   //delayMicroseconds(20);
   byte a = transferAndWait(command);
-  byte b = transferAndWait(var1);
+  int b = transferAndWait(var1);
+  tempo = a * 10000;
   byte c = transferAndWait(var2);
   //byte d = transferAndWait(0);
   //uint8_t MasterReceive = transferAndWait(var2);
 
   Serial.print(command);Serial.print(" ");Serial.print(var1);Serial.print(" "); Serial.println(var2);
-  Serial.print("abcd");Serial.print(a);Serial.print(" ");Serial.print(b);Serial.print(" ");Serial.print(c);Serial.print(" ");
+  Serial.print("abcd ");Serial.print(a);Serial.print(" ");Serial.print(b);Serial.print(" ");Serial.println(c);Serial.print(" ");
 
   digitalWrite(SS, HIGH);
   //return MasterReceive;

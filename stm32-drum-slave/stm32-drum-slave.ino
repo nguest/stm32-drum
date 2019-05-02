@@ -44,7 +44,7 @@ ISR (SPI_STC_vect) {
    
     case 's': // sending stepIndex & pattern data
       buffer[index++] = c;
-      SPDR = 42;  // add 15
+      SPDR = 50;
       break;
   }
   pattern[buffer[0]] = buffer[1]; // write 2nd byte
