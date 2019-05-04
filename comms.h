@@ -18,13 +18,14 @@ void setupSPI() {
 }
 
 //--------- SPI Write ----------//
+
 byte transferAndWait (volatile byte what) {
   byte receive = SPI.transfer(what);
   delayMicroseconds(20);
   return receive;
 } // end of transferAndWait
 
-uint8_t WriteSPI(char command, uint8_t var1, uint8_t var2 = 'x') {
+uint8_t WriteSPI(char command, uint8_t var1, uint8_t var2) {
   digitalWrite(SS, LOW); // Starts communication with Slave connected to master
   //SPI.transfer(command);
   //delayMicroseconds(20);
@@ -36,7 +37,7 @@ uint8_t WriteSPI(char command, uint8_t var1, uint8_t var2 = 'x') {
   //uint8_t MasterReceive = transferAndWait(var2);
 
   Serial.print(command);Serial.print(" ");Serial.print(var1);Serial.print(" "); Serial.println(var2);
-  Serial.print("abcd ");Serial.print(a);Serial.print(" ");Serial.print(b);Serial.print(" ");Serial.println(c);Serial.print(" ");
+  Serial.print("abc ");Serial.print(a);Serial.print(" ");Serial.print(b);Serial.print(" ");Serial.println(c);Serial.print(" ");
 
   digitalWrite(SS, HIGH);
   //return MasterReceive;

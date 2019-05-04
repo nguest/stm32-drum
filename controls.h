@@ -115,7 +115,7 @@ void controlInterrupt() {
     RECORD = (RECORD == 1) ? 0 : 1;
     Serial.print("RECORD ");
     Serial.println(RECORD);
-    WriteSPI('m', 'r');
+    //WriteSPI('m', 'r', 0);
     digitalWrite(recordLEDPin, HIGH);
   }
   buttonLast[9] = button[9];

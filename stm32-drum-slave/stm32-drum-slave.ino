@@ -8,6 +8,7 @@ byte command = 0;
 byte buffer[2];
 volatile int index;
 uint8_t pattern[16];
+byte MODE = 10;
 
 
 void setup (void) {
@@ -40,18 +41,22 @@ ISR (SPI_STC_vect) {
     case 0: // no command? then this is the command
       command = c;
       SPDR = 0;
+      // index = 0; ?
       break;
    
     case 's': // sending stepIndex & pattern data
       buffer[index++] = c;
       SPDR = 50;
       break;
+    case 'm':
+      MODE = c;
+      SPDR = 40;
+      index = 2;
   }
   pattern[buffer[0]] = buffer[1]; // write 2nd byte
 }
 
 //--------- render functions ----------//
-
 
 void renderPattern() {
   const uint8_t offsetY = 10;
@@ -65,11 +70,11 @@ void renderPattern() {
       }
     }
   }
-  //renderStatus();
-  renderIndicator();
+  renderStatus();
+  renderStep();
 }
 
-void renderIndicator() {
+void renderStep() {
   // display stepCount number
   char tmp_string[8];
   itoa(buffer[0], tmp_string, 10);
@@ -80,14 +85,26 @@ void renderIndicator() {
   u8g2.drawBox((buffer[0])*8,10,8,54);
   
   u8g2.sendBuffer();
-
 }
 
+void renderStatus() {
+  char tmp_string[8];
+
+  switch (MODE) {
+    case 0:
+      u8g2.drawStr(30,10, "PAUSED");
+      break;
+    case 1:
+      u8g2.drawStr(30,10, "PLAYING");
+      break;
+  }
+}
 
 //--------- main loop ----------//
 
 void loop (void) {
 //  Serial.print("buff ");Serial.print(buffer[0]);Serial.print("  ");Serial.println(buffer[1]);
+//  Serial.print(" MODE ");Serial.println(MODE);
 //  delay(800);
   renderPattern();
 }
