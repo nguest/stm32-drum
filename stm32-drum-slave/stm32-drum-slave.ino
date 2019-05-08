@@ -74,13 +74,16 @@ ISR (SPI_STC_vect) {
    
     case 's': // sending stepIndex & pattern data
       buffer[index++] = c;
-      SPDR = 50;
+      SPDR = tempo;
       break;
     case 'm':
       MODE = c;
-      SPDR = 40;
+      SPDR = tempo;
       index = 2;
-
+    case 't':
+      MODE = c;
+      SPDR = tempo;
+      index = 2;
   }
   pattern[buffer[0]] = buffer[1]; // write 2nd byte
 }
@@ -100,7 +103,7 @@ void renderPattern(void) {
   }
   renderStatus();
   if(MODE == 1) renderStep();
-  Serial.println(MODE);
+  //Serial.println(MODE);
   
 }
 
@@ -109,6 +112,10 @@ void renderStep(void) {
   char tmp_string[8];
   itoa(buffer[0], tmp_string, 10);
   u8g2.drawStr(0, 6, tmp_string);
+
+  char tmp_string2[3];
+  itoa(tempo, tmp_string2, 10);
+  u8g2.drawStr(80, 6, tmp_string2);
 
   u8g2.setDrawColor(2); // XOR
   u8g2.drawBox((buffer[0])*8,offsetY,8,54);
@@ -124,6 +131,7 @@ void renderStatus(void) {
       u8g2.drawStr(30, 6, "PAUSED");
       break;
     case 1:
+    case 2:
       u8g2.drawStr(30, 6, "PLAYING");
       break;
   }
@@ -150,16 +158,16 @@ volatile int tDelay;
 
 void renderTempo() {
 
-  if (tDelay > 500) {
+  if (tDelay > 10) {
     Serial.println(MODE);
 
-    u8g2.clearBuffer();
+    //u8g2.clearBuffer();
     tempo = constrain(tempo + joystick.x, 30, 50);
-    //Serial.print("Tempo ");Serial.println(tempo);
+    Serial.print("Tempo ");Serial.println(joystick.x);
     char tmp_string[4];
     itoa(tempo, tmp_string, 10);
-    u8g2.drawStr(80, 6, tmp_string);
-    u8g2.sendBuffer();
+//    u8g2.drawStr(80, 6, tmp_string);
+//    u8g2.sendBuffer();
 
     joystick.x = 0;
     tDelay = 0;
@@ -217,10 +225,10 @@ void loop (void) {
   if (MODE == 0) {
     readJoystick(10000);
   }
-  if (MODE == 2) {
-    //Serial.println("t");
-    readJoystick(500);
+  if (MODE == 1) {
+    readJoystick(10);
     renderTempo();
+    renderPattern();
   }
-  renderPattern();
+
 }

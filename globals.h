@@ -22,4 +22,4 @@ uint_fast8_t trigger = B00000000;
 
 //--------- Control parameters ----------//
 
-volatile uint8_t joystick;
+uint32_t receiveRate = 1000000;

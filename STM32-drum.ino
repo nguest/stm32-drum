@@ -40,6 +40,9 @@ void play() {
   uint16_t MasterSend;
   byte MasterReceive;
 
+  uint32_t receiveCount = 1;
+
+
 
   while(1) {
 
@@ -119,10 +122,17 @@ void play() {
         }
       }
     }
+    else if (MODE == 2) {
+      if (!(receiveCount--)) { // every "tempo" ticks, do the thing  
+        receiveCount = receiveRate; // set it back to the tempo ticks
+
+        MasterReceive = WriteSPI('t', 0, 0);
+        Serial.print("T: ");Serial.println(MasterReceive);
+      }
+    }
     else {
       stepCount = 0;
       tempoCount = 1;
-      Serial.println(joystick);
     }
   }
 /* ----------------------------- */
