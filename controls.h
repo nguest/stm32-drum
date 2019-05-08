@@ -1,7 +1,5 @@
 //--------- Controls ----------//
 
-
-
 # define GROUNDED_PIN -1
 
 ADCTouchSensor touch[8] = {
@@ -14,23 +12,13 @@ ADCTouchSensor touch[8] = {
   ADCTouchSensor(PA6, GROUNDED_PIN),
   ADCTouchSensor(PA7, GROUNDED_PIN),
 };
-  // = new ADCTouchSensor[8];
+
 const uint8_t touchPins[8] = { PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7 };
-
-#define joystick1Pin PB0
-
-// ADCTouchSensor button0 = ADCTouchSensor(PA0, GROUNDED_PIN);
-// ADCTouchSensor button1 = ADCTouchSensor(PA1, GROUNDED_PIN);
-// ADCTouchSensor button2 = ADCTouchSensor(PA2, GROUNDED_PIN);
-// ADCTouchSensor button3 = ADCTouchSensor(PA3, GROUNDED_PIN);
-
-
 
 //#define PLAY_PAUSE PC14
 #define recordLEDPin PA8
 
 const uint8_t buttonPins[10] = { 0, 0, 0, 0, 0, 0, 0, 0, PC14, PC15 };
-
 
 
 //--------- Controls setup ----------//
@@ -53,8 +41,6 @@ void setupControls() {
   pinMode(buttonPins[9], INPUT_PULLUP);
   pinMode(recordLEDPin, OUTPUT);
 
-  pinMode(joystick1Pin, INPUT_ANALOG);
-
 };
 
 //--------- button interrupt ------//
@@ -66,26 +52,6 @@ volatile uint_fast8_t buttonTrigger = B00000000;
 volatile uint_fast8_t playTrigger = 0;
 
 int bDelay;
-int jDelay;
-
-uint8_t readJoystick() {
-  //if (jDelay  20) return 0;
-  uint16_t joystickLR = analogRead(joystick1Pin);
-  uint16_t threshold = 100;
-
-  if (jDelay > 20) {
-    if (joystickLR < threshold) {
-      jDelay = 0;
-      return 1;
-    }
-    if (joystickLR > 4096 - threshold) {
-      jDelay = 0;
-      return 2;
-    }
-  }
-  jDelay++;
-  return 0;
-}
 
 void controlInterrupt() {
   button[8] = digitalRead(buttonPins[8]);
@@ -102,6 +68,8 @@ void controlInterrupt() {
 
   // PLAY/PAUSE
   if (button[8] == 0 && buttonLast[8] == 1) {
+    //if pressed on this tick;
+
     MODE = (MODE == 1) ? 0 : 1;
     RECORD = (MODE == 0) ? 0 : RECORD;
     Serial.print("MODE ");
@@ -110,24 +78,27 @@ void controlInterrupt() {
   }
   buttonLast[8] = button[8];
 
-  // RECORD
+  // // RECORD
+  // if (button[9] == 0 && buttonLast[9] == 1) {
+  //   RECORD = (RECORD == 1) ? 0 : 1;
+  //   Serial.print("RECORD ");
+  //   Serial.println(RECORD);
+  //   WriteSPI('m', 2, 0);
+  //   digitalWrite(recordLEDPin, HIGH);
+  // }
+  // buttonLast[9] = button[9];
+
+  // TEMPO
   if (button[9] == 0 && buttonLast[9] == 1) {
-    RECORD = (RECORD == 1) ? 0 : 1;
-    Serial.print("RECORD ");
-    Serial.println(RECORD);
-    //WriteSPI('m', 'r', 0);
-    digitalWrite(recordLEDPin, HIGH);
+    MODE = (MODE == 2) ? 1 : 2;
+    Serial.print("MODE ");
+    Serial.println(MODE);
+    WriteSPI('m', MODE, 0);
+    //digitalWrite(recordLEDPin, HIGH);
   }
   buttonLast[9] = button[9];
 
-  // hmmmm
-  //joystick = readJoystick();
-  //Serial.println(joystick);
-  
-
 }
-
-
 
 
 void readTouch() {

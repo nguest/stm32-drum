@@ -36,7 +36,7 @@ uint8_t WriteSPI(char command, uint8_t var1, uint8_t var2) {
   //byte d = transferAndWait(0);
   //uint8_t MasterReceive = transferAndWait(var2);
 
-  Serial.print(command);Serial.print(" ");Serial.print(var1);Serial.print(" "); Serial.println(var2);
+  Serial.print(command);Serial.print(" . ");Serial.print(var1);Serial.print(" . "); Serial.println(var2);
   Serial.print("abc ");Serial.print(a);Serial.print(" ");Serial.print(b);Serial.print(" ");Serial.println(c);Serial.print(" ");
 
   digitalWrite(SS, HIGH);
