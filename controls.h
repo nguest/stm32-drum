@@ -40,6 +40,7 @@ void setupControls() {
   pinMode(buttonPins[8], INPUT_PULLUP);
   pinMode(buttonPins[9], INPUT_PULLUP);
   pinMode(recordLEDPin, OUTPUT);
+  digitalWrite(recordLEDPin, LOW);
 
 };
 
@@ -72,6 +73,7 @@ void controlInterrupt() {
 
     MODE = (MODE == 1) ? 0 : 1;
     RECORD = (MODE == 0) ? 0 : RECORD;
+    digitalWrite(recordLEDPin, RECORD);
     Serial.print("MODE ");
     Serial.println(MODE);
     WriteSPI('m', MODE, 0);
@@ -84,7 +86,7 @@ void controlInterrupt() {
     Serial.print("RECORD ");
     Serial.println(RECORD);
     WriteSPI('r', RECORD, 0);
-    digitalWrite(recordLEDPin, HIGH);
+    digitalWrite(recordLEDPin, RECORD);
   }
   buttonLast[9] = button[9];
 
