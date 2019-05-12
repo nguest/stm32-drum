@@ -27,17 +27,12 @@ struct Cursor {
   int x;
   int y;
 };
-Cursor cursor1;
-int cursorX;
-int cursorY;
+Cursor cursor;
 
 void setup (void) {
   Serial.begin(38400);
   pinMode(MISO, OUTPUT);
   pinMode(2, INPUT);
-
-//  pinMode(joystickXPin, INPUT);
-//  pinMode(joystickYPin, INPUT);
 
   SPCR |= _BV(SPE); // turn on SPI in slave mode
   SPCR |= _BV(SPIE);  // turn on interrupts
@@ -80,8 +75,8 @@ ISR (SPI_STC_vect) {
       MODE = c;
       SPDR = tempo;
       index = 2;
-    case 't':
-      MODE = c;
+    case 'r':
+      RECORD = c;
       SPDR = tempo;
       index = 2;
   }
@@ -101,9 +96,13 @@ void renderPattern(void) {
       }
     }
   }
+  readTempo();
+  char str2[3];
+  itoa(tempo, str2, 10);
+  u8g2.drawStr(100, 6, str2);
+  
   renderStatus();
   if(MODE == 1) renderStep();
-  //Serial.println(MODE);
   
 }
 
@@ -112,11 +111,6 @@ void renderStep(void) {
   char str1[8];
   itoa(buffer[0], str1, 10);
   u8g2.drawStr(0, 6, str1);
-
-  readTempo();
-  char str2[3];
-  itoa(tempo, str2, 10);
-  u8g2.drawStr(80, 6, str2);
 
   u8g2.setDrawColor(2); // XOR
   u8g2.drawBox((buffer[0])*8,offsetY,8,54);
@@ -132,45 +126,37 @@ void renderStatus(void) {
       u8g2.drawStr(30, 6, "PAUSED");
       break;
     case 1:
-    case 2:
       u8g2.drawStr(30, 6, "PLAYING");
       break;
   }
+  if (RECORD) {
+    u8g2.drawStr(80, 6, "RR");
+  }
 }
 
-void renderCursor(int dx, int dy) {
-  if (dx == 0 && dy == 0) return;
+void renderCursor() {
+  if (joystick.x == 0 && joystick.y == 0) return;
   u8g2.clearBuffer();
   
-  cursorX += dx;
-  cursorY += dy;
+  cursor.x += joystick.x;
+  cursor.y += joystick.y;
 
-  cursorX = constrain(cursorX, 0, 15);
-  cursorY = constrain(cursorY, 0, 7);
-//  
- // Serial.print(cursorX);Serial.print(" cursor ");Serial.println(cursorY);
-  u8g2.drawBox(cursorX*8, cursorY*8, 8, 8);
+  cursor.x = constrain(cursor.x, 0, 15);
+  cursor.x = constrain(cursor.x, 0, 7);
+
+  renderPattern();
+  
+  //Serial.print(cursor.x);Serial.print(" cursor ");Serial.println(cursor.y);
+  u8g2.drawBox(cursor.x*8,offsetY,8,54);
+
   u8g2.sendBuffer();
   //u8g2.updateDisplayArea(0, 0, 24, 24);
-
+  joystick = (Joystick){ x: 0, y: 0 };
 }
 
-volatile int tDelay;
-
 void readTempo() {
-
-  if (tDelay > 10) {
-    //Serial.println(MODE);
-
-    //u8g2.clearBuffer();
-    tempo = constrain(tempo + joystick.y, 30, 50);
-
-    joystick.x = 0;
-    joystick.y = 0;
-
-    tDelay = 0;
-  }
-  tDelay++;
+  tempo = constrain(tempo + joystick.y, 30, 50);
+  joystick = (Joystick){ x: 0, y: 0 };
 }
 
 
@@ -199,6 +185,8 @@ int readJoystick(int wait) {
       joystick.y = 1;
     }
     jDelay = 0;
+    //Serial.print(joystick.x);Serial.print(" ");Serial.println(joystick.y);
+
   }
 
   jDelay++;
@@ -210,13 +198,12 @@ int readJoystick(int wait) {
 
 void loop (void) {
 //  Serial.print("buff ");Serial.print(buffer[0]);Serial.print("  ");Serial.println(buffer[1]);
-//  Serial.print(" MODE ");Serial.println(MODE);
-  //delay(100);
-  //Serial.println();
+//  Serial.print(" MODE ");Serial.println(MODE)
 
   
   if (MODE == 0) {
     readJoystick(10000);
+    renderCursor();
   }
   if (MODE == 1) {
     readJoystick(10);

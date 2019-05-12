@@ -78,25 +78,25 @@ void controlInterrupt() {
   }
   buttonLast[8] = button[8];
 
-  // // RECORD
-  // if (button[9] == 0 && buttonLast[9] == 1) {
-  //   RECORD = (RECORD == 1) ? 0 : 1;
-  //   Serial.print("RECORD ");
-  //   Serial.println(RECORD);
-  //   WriteSPI('m', 2, 0);
-  //   digitalWrite(recordLEDPin, HIGH);
-  // }
-  // buttonLast[9] = button[9];
-
-  // TEMPO
+  // RECORD
   if (button[9] == 0 && buttonLast[9] == 1) {
-    MODE = (MODE == 2) ? 1 : 2;
-    Serial.print("MODE ");
-    Serial.println(MODE);
-    WriteSPI('m', MODE, 0);
-    //digitalWrite(recordLEDPin, HIGH);
+    RECORD = (RECORD == 1) ? 0 : 1;
+    Serial.print("RECORD ");
+    Serial.println(RECORD);
+    WriteSPI('r', RECORD, 0);
+    digitalWrite(recordLEDPin, HIGH);
   }
   buttonLast[9] = button[9];
+
+  // TEMPO
+  // if (button[9] == 0 && buttonLast[9] == 1) {
+  //   MODE = (MODE == 2) ? 1 : 2;
+  //   Serial.print("MODE ");
+  //   Serial.println(MODE);
+  //   WriteSPI('m', MODE, 0);
+  //   //digitalWrite(recordLEDPin, HIGH);
+  // }
+  // buttonLast[9] = button[9];
 
 }
 

@@ -1,14 +1,14 @@
 # STM32-drum
-STM32Ff103 drum machine / 12bits
+STM32F103 drum machine / 12bits
 
 Output 1.3" 128x64 OLED via Arduino Nano as SPI slave.
-Capacitative touch for drum triggers (WIP)
+Capacitative touch for drum triggers
 
 TODO: 
 - [x] Basic operation from pre-programmed pattern
 - [x] SPI transfer to Nano and live pattern display on screen
 - [x] Play/ Pause/ Record buttons
-- [ ] Digital tempo change
+- [x] Digital tempo change
 - [ ] Shorten samples / save length pattern
 - [ ] Reduce gain / save gain pattern
 - [ ] Display gain / length on screen

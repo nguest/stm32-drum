@@ -121,14 +121,17 @@ void play() {
           sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
         }
       }
-    }
-    else if (MODE == 2) {
+      
       if (!(receiveCount--)) { // every "tempo" ticks, do the thing  
         receiveCount = receiveRate; // set it back to the tempo ticks
 
         MasterReceive = WriteSPI('t', 0, 0);
         Serial.print("T: ");Serial.println(MasterReceive);
       }
+
+    }
+    else if (MODE == 2) {
+
     }
     else {
       stepCount = 0;
