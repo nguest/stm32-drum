@@ -2,7 +2,6 @@
 
 U8G2_SH1106_128X64_NONAME_F_HW_I2C u8g2(U8G2_R0, /* reset=*/ U8X8_PIN_NONE);
 
-
 void setUpDisplay() {
   u8g2.begin();
   u8g2.clearBuffer();
@@ -42,7 +41,7 @@ void renderStep(void) {
   u8g2.drawStr(0, 6, str1);
 
   u8g2.setDrawColor(2); // XOR
-  u8g2.drawBox((buffer[0])*8,offsetY,8,54);
+  u8g2.drawBox((buffer[0])*8,offsetY,8,56);
     
   u8g2.sendBuffer();
 }
@@ -54,10 +53,16 @@ void renderPattern(void) {
   for (uint8_t j = 0; j < 8; j++) {
     for (uint8_t i = 0; i < 16; i++) {    
       if (pattern[i] & 1<<j) {
-        u8g2.drawBox(i*8 + 1, j*8 + offsetY + 1, 6, 6);
+        u8g2.drawBox(i*8 + 1, j*8 + offsetY + 1, 6, 6); // Pattern square
+      }
+      if (i % 4 == 0) {
+        u8g2.drawPixel(i*8, j*8 + offsetY); // dots every 4 lines
       }
     }
+   
   }
+
+  
   readTempo();
 
   char str2[3];

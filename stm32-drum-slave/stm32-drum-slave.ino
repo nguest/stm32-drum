@@ -47,14 +47,19 @@ ISR (SPI_STC_vect) {
       buffer[index++] = c;
       SPDR = tempo;
       break;
+      
     case 'm':
       MODE = c;
       SPDR = tempo;
       index = 2;
+      Serial.print(" MODE ");Serial.println(MODE);
+      break;
+      
     case 'r':
       RECORD = c;
       SPDR = tempo;
       index = 2;
+      break;
   }
   pattern[buffer[0]] = buffer[1]; // write 2nd byte
 }
@@ -98,11 +103,11 @@ int readJoystick(int wait) {
 
 void loop (void) {
 //  Serial.print("buff ");Serial.print(buffer[0]);Serial.print("  ");Serial.println(buffer[1]);
-//  Serial.print(" MODE ");Serial.println(MODE)
+//  Serial.print(" MODE ");Serial.println(MODE);
 
   
   if (MODE == 0) {
-    readJoystick(10000);
+    readJoystick(50000);
     renderCursor();
   }
   if (MODE == 1) {

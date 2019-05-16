@@ -7,11 +7,7 @@
 #include "controls.h"
 #include "timers.h"
 
-
-
 //--------- Setup ----------//
-
-PC_13 LED;
 
 void setup() {
   Serial.begin(115200);
@@ -20,9 +16,7 @@ void setup() {
   setupTimers();
   setupControls();
 
-  LED.pinMode(OUTPUT);
   delay(1000);
-
 }
 
 //--------- Write Buffer and sequence ----------//
@@ -43,7 +37,6 @@ void play() {
   uint32_t receiveCount = 1;
 
 
-
   while(1) {
 
     if (RingCount < BUFFERSIZE_M1) { // if space in ringbuffer
@@ -57,7 +50,7 @@ void play() {
           sampleCount[i] --;
         }      
       }    
-     //  hard clip - must be faster than `constrain()`?
+//    // hard clip - must be faster than `constrain()`?
 //      if (sampleTotal < -(1 << 15))
 //        sampleTotal = -(1 << 15);
 //      if (sampleTotal > (1 << 15))
@@ -83,13 +76,10 @@ void play() {
         readTouch(); // read touch buttons
 
         MasterReceive = WriteSPI('s', stepCount, livePattern[stepCount]);
-        // digitalWrite(SS, LOW); 
-        // MasterReceive = SPI.transfer(stepCount);
-        // delayMicroseconds(20);
-        // digitalWrite(SS, HIGH); 
 
         trigger = livePattern[stepCount++];
         //Serial.print("RECORD ");Serial.print(RECORD);Serial.print(" -- ");Serial.println(buttonTrigger);
+        // record mode- write pattern basis triggered button
         if (RECORD && (buttonTrigger != B00000000)) {
           livePattern[stepCount] ^= buttonTrigger;
           buttonTrigger = B00000000;
@@ -99,7 +89,6 @@ void play() {
         // read the pattern bytes, each bit triggers a sample
         for (uint8_t i = 0; i < NUM_SAMPLES; i++) {
           if (trigger & 1<<i) {
-
             samplePointer[i] = 0;
             sampleCount[i] = wavetableLengths16[i]; // number of bytes in sample
           }
@@ -108,8 +97,8 @@ void play() {
       }
     }
 
-
     /* -------player------------ */  
+
     else if (MODE == 0){
       stepCount = 0;
       tempoCount = 1;

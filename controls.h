@@ -20,6 +20,7 @@ const uint8_t touchPins[8] = { PA0, PA1, PA2, PA3, PA4, PA5, PA6, PA7 };
 
 const uint8_t buttonPins[10] = { 0, 0, 0, 0, 0, 0, 0, 0, PC14, PC15 };
 
+PC_13 LED; // tempo LED
 
 //--------- Controls setup ----------//
 
@@ -39,6 +40,9 @@ void setupControls() {
 
   pinMode(buttonPins[8], INPUT_PULLUP);
   pinMode(buttonPins[9], INPUT_PULLUP);
+
+  LED.pinMode(OUTPUT);
+
   pinMode(recordLEDPin, OUTPUT);
   digitalWrite(recordLEDPin, LOW);
 
